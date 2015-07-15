@@ -230,6 +230,21 @@ function PMA_hideShowDefaultValue($default_type)
 }
 
 /**
+ * Hides/shows the input field for column expression based on whether
+ * VIRTUAL/PERSISTENT is selected
+ *
+ * @param $virtuality virtuality dropdown
+ */
+function PMA_hideShowExpression($virtuality)
+{
+    if ($virtuality.val() == '') {
+        $virtuality.siblings('.expression').hide();
+    } else {
+        $virtuality.siblings('.expression').show();
+    }
+}
+
+/**
  * Show notices for ENUM columns; add/hide the default value
  *
  */
@@ -240,6 +255,9 @@ function PMA_verifyColumnsProperties()
     });
     $("select.default_type").each(function () {
         PMA_hideShowDefaultValue($(this));
+    });
+    $('select.virtuality').each(function () {
+        PMA_hideShowExpression($(this));
     });
 }
 
@@ -2812,7 +2830,9 @@ AJAX.registerOnload('functions.js', function () {
                         PMA_reloadNavigation();
                         // Redirect to table structure page on creation of new table
                         var params_12 = 'ajax_request=true&ajax_page_request=true';
-                        params_12 += AJAX.cache.menus.getRequestParam();
+                        if (! (history && history.pushState)) {
+                            params_12 += PMA_Microhistory.menus.getRequestParam();
+                        }
                         tblStruct_url = 'tbl_structure.php?server=' + data._params.server +
                             '&db='+ data._params.db + '&token=' + data._params.token +
                             '&goto=db_structure.php&table=' + data._params.table + '';
@@ -3033,6 +3053,7 @@ AJAX.registerOnload('functions.js', function () {
 AJAX.registerTeardown('functions.js', function () {
     $(document).off('change', "select.column_type");
     $(document).off('change', "select.default_type");
+    $(document).off('change', "select.virtuality");
     $(document).off('change', 'input.allow_null');
     $(document).off('change', '.create_table_form select[name=tbl_storage_engine]');
 });
@@ -3051,6 +3072,9 @@ AJAX.registerOnload('functions.js', function () {
     });
     $(document).on('change', "select.default_type", function () {
         PMA_hideShowDefaultValue($(this));
+    });
+    $(document).on('change', "select.virtuality", function () {
+        PMA_hideShowExpression($(this));
     });
     $(document).on('change', 'input.allow_null', function () {
         PMA_validateDefaultValue($(this));

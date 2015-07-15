@@ -500,8 +500,8 @@ class PMA_Menu
         }
 
         if (! $db_is_system_schema
-            && isset($cfgRelation['central_columnswork'])
-            && $cfgRelation['central_columnswork']
+            && isset($cfgRelation['centralcolumnswork'])
+            && $cfgRelation['centralcolumnswork']
         ) {
             $tabs['central_columns']['text'] = __('Central columns');
             $tabs['central_columns']['icon'] = 'centralColumns.png';
@@ -564,7 +564,7 @@ class PMA_Menu
         if (($is_superuser || $isCreateOrGrantUser) && ! PMA_DRIZZLE) {
             $tabs['rights']['icon'] = 's_rights.png';
             $tabs['rights']['link'] = 'server_privileges.php';
-            $tabs['rights']['text'] = __('Users');
+            $tabs['rights']['text'] = __('User accounts');
             $tabs['rights']['active'] = in_array(
                 basename($GLOBALS['PMA_PHP_SELF']),
                 array('server_privileges.php', 'server_user_groups.php')
@@ -612,6 +612,13 @@ class PMA_Menu
             $tabs['plugins']['icon'] = 'b_engine.png';
             $tabs['plugins']['link'] = 'server_plugins.php';
             $tabs['plugins']['text'] = __('Plugins');
+            $tabs['plugins']['active'] = in_array(
+                basename($GLOBALS['PMA_PHP_SELF']),
+                array(
+                    'server_plugins.php',
+                    'server_modules.php',
+                )
+            );
         } else {
             $tabs['engine']['icon'] = 'b_engine.png';
             $tabs['engine']['link'] = 'server_engines.php';

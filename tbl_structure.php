@@ -51,11 +51,11 @@ if (isset($_REQUEST['reserved_word_check'])) {
         $columns_names = $_REQUEST['field_name'];
         $reserved_keywords_names = array();
         foreach ($columns_names as $column) {
-            if (PMA_SQP_isKeyWord(trim($column))) {
+            if (SqlParser\Context::isKeyword(trim($column), true)) {
                 $reserved_keywords_names[] = trim($column);
             }
         }
-        if (PMA_SQP_isKeyWord(trim($table))) {
+        if (SqlParser\Context::isKeyword(trim($table), true)) {
             $reserved_keywords_names[] = trim($table);
         }
         if (count($reserved_keywords_names) == 0) {
@@ -194,12 +194,16 @@ $fields = (array) $GLOBALS['dbi']->getColumns($db, $table, null, true);
 // and SHOW CREATE TABLE says NOT NULL (tested
 // in MySQL 4.0.25 and 5.0.21, http://bugs.mysql.com/20910).
 
-$show_create_table = $GLOBALS['dbi']->fetchValue(
-    'SHOW CREATE TABLE ' . PMA_Util::backquote($db) . '.'
-    . PMA_Util::backquote($table),
-    0, 1
-);
-$analyzed_sql = PMA_SQP_analyze(PMA_SQP_parse($show_create_table));
+$tableObj = new PMA_Table($table, $db);
+$show_create_table = $tableObj->showCreate();
+$parser = new SqlParser\Parser($show_create_table);
+
+/**
+ * @var CreateStatement $stmt
+ */
+$stmt = $parser->statements[0];
+
+$create_table_fields = SqlParser\Utils\Table::getFields($stmt);
 
 /**
  * prepare table infos

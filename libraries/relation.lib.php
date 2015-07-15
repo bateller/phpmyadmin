@@ -311,7 +311,7 @@ function PMA_getRelationsParamDiagnostic($cfgRelation)
         );
         $retval .= PMA_getDiagMessageForFeature(
             __('Managing Central list of columns'),
-            'central_columnswork',
+            'centralcolumnswork',
             $messages
         );
         $retval .= PMA_getDiagMessageForParameter(
@@ -322,14 +322,14 @@ function PMA_getRelationsParamDiagnostic($cfgRelation)
         );
         $retval .= PMA_getDiagMessageForFeature(
             __('Remembering Designer Settings'),
-            'designer_settingswork',
+            'designersettingswork',
             $messages
         );
         $retval .= PMA_getDiagMessageForParameter(
-            'exporttemplates',
-            isset($cfgRelation['exporttemplates']),
+            'export_templates',
+            isset($cfgRelation['export_templates']),
             $messages,
-            'exporttemplates'
+            'export_templates'
         );
         $retval .= PMA_getDiagMessageForFeature(
             __('Saving export templates'),
@@ -461,8 +461,8 @@ function PMA_checkRelationsParam()
     $cfgRelation['navwork']        = false;
     $cfgRelation['allworks']       = false;
     $cfgRelation['savedsearcheswork'] = false;
-    $cfgRelation['central_columnswork'] = false;
-    $cfgRelation['designer_settingswork'] = false;
+    $cfgRelation['centralcolumnswork'] = false;
+    $cfgRelation['designersettingswork'] = false;
     $cfgRelation['exporttemplateswork'] = false;
     $cfgRelation['user']           = null;
     $cfgRelation['db']             = null;
@@ -539,8 +539,8 @@ function PMA_checkRelationsParam()
             $cfgRelation['central_columns']    = $curr_table[0];
         } elseif ($curr_table[0] == $GLOBALS['cfg']['Server']['designer_settings']) {
             $cfgRelation['designer_settings'] = $curr_table[0];
-        } elseif ($curr_table[0] == $GLOBALS['cfg']['Server']['exporttemplates']) {
-            $cfgRelation['exporttemplates']    = $curr_table[0];
+        } elseif ($curr_table[0] == $GLOBALS['cfg']['Server']['export_templates']) {
+            $cfgRelation['export_templates']    = $curr_table[0];
         }
     } // end while
     $GLOBALS['dbi']->freeResult($tab_rs);
@@ -604,14 +604,14 @@ function PMA_checkRelationsParam()
     }
 
     if (isset($cfgRelation['central_columns'])) {
-        $cfgRelation['central_columnswork']      = true;
+        $cfgRelation['centralcolumnswork']      = true;
     }
 
     if (isset($cfgRelation['designer_settings'])) {
-        $cfgRelation['designer_settingswork']    = true;
+        $cfgRelation['designersettingswork']    = true;
     }
 
-    if (isset($cfgRelation['exporttemplates'])) {
+    if (isset($cfgRelation['export_templates'])) {
         $cfgRelation['exporttemplateswork']      = true;
     }
 
@@ -620,10 +620,10 @@ function PMA_checkRelationsParam()
         && $cfgRelation['mimework'] && $cfgRelation['historywork']
         && $cfgRelation['recentwork'] && $cfgRelation['uiprefswork']
         && $cfgRelation['trackingwork'] && $cfgRelation['userconfigwork']
-        && $cfgRelation['bookmarkwork'] && $cfgRelation['central_columnswork']
+        && $cfgRelation['bookmarkwork'] && $cfgRelation['centralcolumnswork']
         && $cfgRelation['menuswork'] && $cfgRelation['navwork']
         && $cfgRelation['savedsearcheswork'] && $cfgRelation['favoritework']
-        && $cfgRelation['designer_settingswork']
+        && $cfgRelation['designersettingswork']
         && $cfgRelation['exporttemplateswork']
     ) {
         $cfgRelation['allworks'] = true;
@@ -734,15 +734,15 @@ function PMA_getForeigners($db, $table, $column = '', $source = 'both')
 
     if (($source == 'both' || $source == 'foreign') && /*overload*/mb_strlen($table)
     ) {
-
-        $showCreateTableQuery = 'SHOW CREATE TABLE '
-            . PMA_Util::backquote($db) . '.' . PMA_Util::backquote($table);
-        $show_create_table = $GLOBALS['dbi']->fetchValue(
-            $showCreateTableQuery, 0, 1
-        );
+        $tableObj = new PMA_Table($table, $db);
+        $show_create_table = $tableObj->showCreate();
         if ($show_create_table) {
-            $analyzed_sql = PMA_SQP_analyze(PMA_SQP_parse($show_create_table));
-            $foreign['foreign_keys_data'] = $analyzed_sql[0]['foreign_keys'];
+            $parser = new SqlParser\Parser($show_create_table);
+            /**
+             * @var CreateStatement $stmt
+             */
+            $stmt = $parser->statements[0];
+            $foreign['foreign_keys_data'] = SqlParser\Utils\Table::getForeignKeys($stmt);
         }
     }
 
@@ -1841,7 +1841,7 @@ function PMA_fixPMATables($db, $create = true)
         'pma__savedsearches' => 'savedsearches',
         'pma__central_columns' => 'central_columns',
         'pma__designer_settings' => 'designer_settings',
-        'pma__exporttemplates' => 'exporttemplates',
+        'pma__export_templates' => 'export_templates',
     );
 
     $existingTables = $GLOBALS['dbi']->getTables($db, $GLOBALS['controllink']);

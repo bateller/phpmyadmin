@@ -22,7 +22,6 @@ require_once 'libraries/charset_conversion.lib.php';
 require_once 'libraries/Message.class.php';
 require_once 'libraries/plugin_interface.lib.php';
 require_once 'libraries/sanitizing.lib.php';
-require_once 'libraries/sqlparser.lib.php';
 require_once 'libraries/js_escape.lib.php';
 require_once 'libraries/relation.lib.php';
 
@@ -190,7 +189,7 @@ class PMA_DisplayExport_Test extends PHPUnit_Framework_TestCase
             $html
         );
         $this->assertContains(
-            __('Export Method:'),
+            __('Export method:'),
             $html
         );
         $this->assertContains(

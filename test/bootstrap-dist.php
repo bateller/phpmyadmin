@@ -22,6 +22,7 @@ define('PHPMYADMIN', 1);
 define('TESTSUITE', 1);
 define('PMA_MYSQL_INT_VERSION', 55000);
 define('PMA_MYSQL_STR_VERSION', '5.50.00');
+define('PMA_MYSQL_VERSION_COMMENT', 'MySQL Community Server (GPL)');
 
 // Selenium tests setup
 $test_defaults = array(
@@ -55,6 +56,7 @@ $CFG = new PMA_Config();
 // Initialize PMA_VERSION variable
 define('PMA_VERSION', $CFG->get('PMA_VERSION'));
 unset($CFG);
+require_once 'libraries/sql-parser/autoload.php';
 
 // Set proxy information from env, if available
 $http_proxy = getenv('http_proxy');

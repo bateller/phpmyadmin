@@ -21,7 +21,6 @@ require_once 'libraries/Theme.class.php';
 require_once 'libraries/Types.class.php';
 require_once 'libraries/mysql_charsets.inc.php';
 require_once 'libraries/central_columns.lib.php';
-require_once 'libraries/sqlparser.lib.php';
 
 /**
  * tests for central_columns.lib.php
@@ -91,7 +90,7 @@ class PMA_Central_Columns_Test extends PHPUnit_Framework_TestCase
         $_SESSION['PMA_Theme'] = PMA_Theme::load('./themes/pmahomme');
         $_SESSION['PMA_Theme'] = new PMA_Theme();
         $_SESSION['relation'][1] = array(
-            'central_columnswork' => true,
+            'centralcolumnswork' => true,
             'relwork' => 1,
             'db' => 'phpmyadmin',
             'relation' => 'relation',

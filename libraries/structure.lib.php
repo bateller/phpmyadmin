@@ -356,8 +356,8 @@ function PMA_getHtmlForCheckAllTables($pmaThemeImage, $text_dir,
         $html_output .= '</optgroup>';
     }
 
-    if (isset($GLOBALS['cfgRelation']['central_columnswork'])
-        && $GLOBALS['cfgRelation']['central_columnswork']
+    if (isset($GLOBALS['cfgRelation']['centralcolumnswork'])
+        && $GLOBALS['cfgRelation']['centralcolumnswork']
     ) {
         $html_output .= '<optgroup label="' . __('Central columns') . '">';
         $html_output .= '<option value="sync_unique_columns_central_list" >'
@@ -1567,8 +1567,8 @@ function PMA_getHtmlForCheckAllTableColumn($pmaThemeImage, $text_dir,
                 __('Fulltext'), 'b_ftext.png', 'ftext'
             );
         }
-        if (isset($GLOBALS['cfgRelation']['central_columnswork'])
-            && $GLOBALS['cfgRelation']['central_columnswork']
+        if (isset($GLOBALS['cfgRelation']['centralcolumnswork'])
+            && $GLOBALS['cfgRelation']['centralcolumnswork']
         ) {
             $html_output .= PMA_Util::getButtonOrImage(
                 'submit_mult', 'mult_submit', 'submit_mult_central_columns_add',
@@ -1626,9 +1626,8 @@ function PMA_getHtmlForEditView($url_params)
         . " AND TABLE_NAME='" . PMA_Util::sqlAddSlashes($GLOBALS['table']) . "';";
     $item = $GLOBALS['dbi']->fetchSingleRow($query);
 
-    $query = "SHOW CREATE TABLE " . PMA_Util::backquote($GLOBALS['db'])
-        . "." . PMA_Util::backquote($GLOBALS['table']);
-    $createView = $GLOBALS['dbi']->fetchValue($query, 0, 'Create View');
+    $tableObj = new PMA_Table($GLOBALS['table'], $GLOBALS['db']);
+    $createView = $tableObj->showCreate();
     // get algorithm from $createView of the form CREATE ALGORITHM=<ALGORITHM> DE...
     $parts = explode(" ", substr($createView, 17));
     $item['ALGORITHM'] = $parts[0];
@@ -2191,8 +2190,8 @@ function PMA_getHtmlForActionsInTableStructure($type, $tbl_storage_engine,
         );
     }
     $html_output .= PMA_getHtmlForDistinctValueAction($url_query, $row, $titles);
-    if (isset($GLOBALS['cfgRelation']['central_columnswork'])
-        && $GLOBALS['cfgRelation']['central_columnswork']
+    if (isset($GLOBALS['cfgRelation']['centralcolumnswork'])
+        && $GLOBALS['cfgRelation']['centralcolumnswork']
     ) {
         $html_output .= '<li class="browse nowrap">';
         if ($isInCentralColumns) {
@@ -2579,6 +2578,12 @@ function PMA_updateColumns($db, $table)
                 isset($_REQUEST['field_comments'][$i])
                 ? $_REQUEST['field_comments'][$i]
                 : '',
+                isset($_REQUEST['field_virtuality'][$i])
+                ? $_REQUEST['field_virtuality'][$i]
+                : '',
+                isset($_REQUEST['field_expression'][$i])
+                ? $_REQUEST['field_expression'][$i]
+                : '',
                 isset($_REQUEST['field_move_to'][$i])
                 ? $_REQUEST['field_move_to'][$i]
                 : ''
@@ -2868,6 +2873,18 @@ function PMA_moveColumns($db, $table)
                         ? 'NONE'
                         : 'USER_DEFINED'));
 
+        $virtual = array(
+            'VIRTUAL', 'PERSISTENT', 'VIRTUAL GENERATED', 'STORED GENERATED'
+        );
+        $data['Virtuality'] = '';
+        $data['Expression'] = '';
+        if (isset($data['Extra']) && in_array($data['Extra'], $virtual)) {
+            $data['Virtuality'] = str_replace(' GENERATED', '', $data['Extra']);
+            $table = new PMA_Table($GLOBALS['table'], $GLOBALS['db']);
+            $expressions = $table->getColumnGenerationExpression($column);
+            $data['Expression'] = $expressions[$column];
+        }
+
         $changes[] = 'CHANGE ' . PMA_Table::generateAlter(
             $column,
             $column,
@@ -2881,6 +2898,8 @@ function PMA_moveColumns($db, $table)
             isset($data['Extra']) && $data['Extra'] !== '' ? $data['Extra'] : false,
             isset($data['COLUMN_COMMENT']) && $data['COLUMN_COMMENT'] !== ''
             ? $data['COLUMN_COMMENT'] : false,
+            $data['Virtuality'],
+            $data['Expression'],
             $i === 0 ? '-first' : $column_names[$i - 1]
         );
         // update current column_names array, first delete old position
@@ -3004,9 +3023,24 @@ function PMA_displayTableBrowseForSelectedColumns($db, $table, $goto,
     include_once 'libraries/sql.lib.php';
 
     PMA_executeQueryAndSendQueryResponse(
-        $analyzed_sql_results, false, $db, $table, null, null, null, false,
-        null, null, null, $goto, $pmaThemeImage, null, null,
-        null, $sql_query, null, null
+        $analyzed_sql_results, // analyzed_sql_results
+        false, // is_gotofile
+        $db, // db
+        $table, // table
+        null, // find_real_end
+        null, // sql_query_for_bookmark
+        null, // extra_data
+        null, // message_to_show
+        null, // message
+        null, // sql_data
+        $goto, // goto
+        $pmaThemeImage, // pmaThemeImage
+        null, // disp_query
+        null, // disp_message
+        null, // query_type
+        $sql_query, // sql_query
+        null, // selectedTables
+        null // complete_query
     );
 }
 
@@ -3218,29 +3252,28 @@ function PMA_getHtmlShowCreate($db, $db_objects)
     $odd2 = true;
     // Iterate through each object.
     foreach ($db_objects as $object) {
+        $tableObj = new PMA_Table($object, $db);
         // Check if current object is a View or Table.
         $isView = PMA_Table::isView($db, $object);
         if ($isView) {
             $row_class = ($odd1) ? 'odd' : 'even';
-            $create_data = PMA_getShowCreate($db, $object, 'view');
             $views .= '<tr class="' . $row_class . '">'
                 . '<td><strong>'
-                . PMA_mimeDefaultFunction($create_data['View'])
+                . PMA_mimeDefaultFunction($object)
                 . '</strong></td>'
                 . '<td>'
-                . PMA_mimeDefaultFunction($create_data['Create View'])
+                . PMA_mimeDefaultFunction($tableObj->showCreate())
                 . '</td>'
                 . '</tr>';
             $odd1 = ! $odd1;
         } else {
             $row_class = ($odd2) ? 'odd' : 'even';
-            $create_data = PMA_getShowCreate($db, $object, 'table');
             $tables .= '<tr class="' . $row_class . '">'
                 . '<td><strong>'
-                . PMA_mimeDefaultFunction($create_data['Table'])
+                . PMA_mimeDefaultFunction($object)
                 . '</strong></td>'
                 . '<td>'
-                . PMA_mimeDefaultFunction($create_data['Create Table'])
+                . PMA_mimeDefaultFunction($tableObj->showCreate())
                 . '</td>'
                 . '</tr>';
             $odd2 = ! $odd2;
@@ -3263,36 +3296,6 @@ function PMA_getHtmlShowCreate($db, $db_objects)
     $html_output .= $tables . $views . '</div>';
 
     return $html_output;
-}
-
-/**
- * Return 'SHOW CREATE' query for a DB object
- *
- * @param string $db        Database name
- * @param string $db_object Database object name
- * @param string $type      Type of object (table or view)
- *
- * @return mysqli_result collection | boolean(false)
- */
-function PMA_getShowCreate($db, $db_object, $type = 'table')
-{
-    // 'SHOW CREATE' SQL query for specific type of DB object.
-    switch ($type) {
-    case 'table':
-        $sql_query = 'SHOW CREATE TABLE ' . PMA_Util::backquote($db) . '.'
-            . PMA_Util::backquote($db_object);
-        break;
-    case 'view':
-        $sql_query = 'SHOW CREATE VIEW ' . PMA_Util::backquote($db) . '.'
-            . PMA_Util::backquote($db_object);
-        break;
-    default:
-        $sql_query = '';
-    }
-    // Execute the query.
-    $result = $GLOBALS['dbi']->fetchSingleRow($sql_query);
-
-    return $result;
 }
 
 /**

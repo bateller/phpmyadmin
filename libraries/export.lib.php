@@ -615,7 +615,7 @@ function PMA_exportDatabase(
         && isset($GLOBALS['sql_procedure_function'])
     ) {
         if ($separate_files == 'database') {
-            if (! $export_plugin->exportHeader($db)) {
+            if (! $export_plugin->exportHeader()) {
                 return;
             }
             if (! $export_plugin->exportDBHeader($db, $db_alias)) {
@@ -1028,7 +1028,7 @@ function PMA_getMetadataTypesToExport()
         'pdf_pages',
         'savedsearches',
         'central_columns',
-        'exporttemplates',
+        'export_templates',
     );
 }
 ?>

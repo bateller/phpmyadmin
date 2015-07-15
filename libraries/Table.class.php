@@ -248,55 +248,6 @@ class PMA_Table
     }
 
     /**
-     * Returns the analysis of 'SHOW CREATE TABLE' query for the table.
-     * In case of a view, the values are taken from the information_schema.
-     *
-     * @param string $db    database
-     * @param string $table table
-     *
-     * @return array analysis of 'SHOW CREATE TABLE' query for the table
-     */
-    static public function analyzeStructure($db = null, $table = null)
-    {
-        if (empty($db) || empty($table)) {
-            return false;
-        }
-
-        $analyzed_sql = array();
-        if (self::isView($db, $table)) {
-            // For a view, 'SHOW CREATE TABLE' returns the definition,
-            // but the structure of the view. So, we try to mock
-            // the result of analyzing 'SHOW CREATE TABLE' query.
-            $analyzed_sql[0] = array();
-            $analyzed_sql[0]['create_table_fields'] = array();
-
-            $results = $GLOBALS['dbi']->fetchResult(
-                "SELECT COLUMN_NAME, DATA_TYPE
-                FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = '" . PMA_Util::sqlAddSlashes($db) . "'
-                AND TABLE_NAME = '" . PMA_Util::sqlAddSlashes($table) . "'"
-            );
-
-            foreach ($results as $result) {
-                $analyzed_sql[0]['create_table_fields'][$result['COLUMN_NAME']]
-                    = array(
-                        'type' => /*overload*/mb_strtoupper($result['DATA_TYPE'])
-                    );
-            }
-        } else {
-            $show_create_table = $GLOBALS['dbi']->fetchValue(
-                'SHOW CREATE TABLE '
-                . PMA_Util::backquote($db)
-                . '.' . PMA_Util::backquote($table),
-                0,
-                1
-            );
-            $analyzed_sql = PMA_SQP_analyze(PMA_SQP_parse($show_create_table));
-        }
-        return $analyzed_sql;
-    }
-
-    /**
      * sets given $value for given $param
      *
      * @param string $param name
@@ -429,6 +380,8 @@ class PMA_Table
      *                                   default type
      * @param string      $extra         'AUTO_INCREMENT'
      * @param string      $comment       field comment
+     * @param string      $virtuality    virtuality of the column
+     * @param string      $expression    expression for the virtual column
      * @param string      $move_to       new position for column
      *
      * @todo    move into class PMA_Column
@@ -440,7 +393,7 @@ class PMA_Table
     static function generateFieldSpec($name, $type, $length = '',
         $attribute = '', $collation = '', $null = false,
         $default_type = 'USER_DEFINED', $default_value = '',  $extra = '',
-        $comment = '', $move_to = ''
+        $comment = '', $virtuality = '', $expression = '', $move_to = ''
     ) {
         $is_timestamp = /*overload*/mb_strpos(
             /*overload*/mb_strtoupper($type),
@@ -461,70 +414,74 @@ class PMA_Table
             $query .= '(' . $length . ')';
         }
 
-        if ($attribute != '') {
-            $query .= ' ' . $attribute;
-        }
-
-        $matches = preg_match(
-            '@^(TINYTEXT|TEXT|MEDIUMTEXT|LONGTEXT|VARCHAR|CHAR|ENUM|SET)$@i',
-            $type
-        );
-        if (! empty($collation) && $collation != 'NULL' && $matches) {
-            $query .= PMA_generateCharsetQueryPart($collation);
-        }
-
-        if ($null !== false) {
-            if ($null == 'NULL') {
-                $query .= ' NULL';
-            } else {
-                $query .= ' NOT NULL';
+        if ($virtuality) {
+            $query .= ' AS (' . $expression . ') ' . $virtuality;
+        } else {
+            if ($attribute != '') {
+                $query .= ' ' . $attribute;
             }
-        }
 
-        switch ($default_type) {
-        case 'USER_DEFINED' :
-            if ($is_timestamp && $default_value === '0') {
-                // a TIMESTAMP does not accept DEFAULT '0'
-                // but DEFAULT 0 works
-                $query .= ' DEFAULT 0';
-            } elseif ($type == 'BIT') {
-                $query .= ' DEFAULT b\''
-                        . preg_replace('/[^01]/', '0', $default_value)
-                        . '\'';
-            } elseif ($type == 'BOOLEAN') {
-                if (preg_match('/^1|T|TRUE|YES$/i', $default_value)) {
-                    $query .= ' DEFAULT TRUE';
-                } elseif (preg_match('/^0|F|FALSE|NO$/i', $default_value)) {
-                    $query .= ' DEFAULT FALSE';
+            $matches = preg_match(
+                '@^(TINYTEXT|TEXT|MEDIUMTEXT|LONGTEXT|VARCHAR|CHAR|ENUM|SET)$@i',
+                $type
+            );
+            if (! empty($collation) && $collation != 'NULL' && $matches) {
+                $query .= PMA_generateCharsetQueryPart($collation);
+            }
+
+            if ($null !== false) {
+                if ($null == 'NULL') {
+                    $query .= ' NULL';
                 } else {
-                    // Invalid BOOLEAN value
+                    $query .= ' NOT NULL';
+                }
+            }
+
+            switch ($default_type) {
+            case 'USER_DEFINED' :
+                if ($is_timestamp && $default_value === '0') {
+                    // a TIMESTAMP does not accept DEFAULT '0'
+                    // but DEFAULT 0 works
+                    $query .= ' DEFAULT 0';
+                } elseif ($type == 'BIT') {
+                    $query .= ' DEFAULT b\''
+                            . preg_replace('/[^01]/', '0', $default_value)
+                            . '\'';
+                } elseif ($type == 'BOOLEAN') {
+                    if (preg_match('/^1|T|TRUE|YES$/i', $default_value)) {
+                        $query .= ' DEFAULT TRUE';
+                    } elseif (preg_match('/^0|F|FALSE|NO$/i', $default_value)) {
+                        $query .= ' DEFAULT FALSE';
+                    } else {
+                        // Invalid BOOLEAN value
+                        $query .= ' DEFAULT \''
+                            . PMA_Util::sqlAddSlashes($default_value) . '\'';
+                    }
+                } elseif ($type == 'BINARY' || $type == 'VARBINARY') {
+                    $query .= ' DEFAULT 0x' . $default_value;
+                } else {
                     $query .= ' DEFAULT \''
                         . PMA_Util::sqlAddSlashes($default_value) . '\'';
                 }
-            } elseif ($type == 'BINARY' || $type == 'VARBINARY') {
-                $query .= ' DEFAULT 0x' . $default_value;
-            } else {
-                $query .= ' DEFAULT \''
-                    . PMA_Util::sqlAddSlashes($default_value) . '\'';
-            }
-            break;
-        case 'NULL' :
-            // If user uncheck null checkbox and not change default value null,
-            // default value will be ignored.
-            if ($null !== false && $null !== 'NULL') {
+                break;
+            case 'NULL' :
+                // If user uncheck null checkbox and not change default value null,
+                // default value will be ignored.
+                if ($null !== false && $null !== 'NULL') {
+                    break;
+                }
+                // else fall-through intended, no break here
+            case 'CURRENT_TIMESTAMP' :
+                $query .= ' DEFAULT ' . $default_type;
+                break;
+            case 'NONE' :
+            default :
                 break;
             }
-            // else fall-through intended, no break here
-        case 'CURRENT_TIMESTAMP' :
-            $query .= ' DEFAULT ' . $default_type;
-            break;
-        case 'NONE' :
-        default :
-            break;
-        }
 
-        if (!empty($extra)) {
-            $query .= ' ' . $extra;
+            if (!empty($extra)) {
+                $query .= ' ' . $extra;
+            }
         }
         if (!empty($comment)) {
             $query .= " COMMENT '" . PMA_Util::sqlAddSlashes($comment) . "'";
@@ -641,6 +598,8 @@ class PMA_Table
      *                                   type
      * @param string      $extra         'AUTO_INCREMENT'
      * @param string      $comment       field comment
+     * @param string      $virtuality    virtuality of the column
+     * @param string      $expression    expression for the virtual column
      * @param string      $move_to       new position for column
      *
      * @see PMA_Table::generateFieldSpec()
@@ -649,13 +608,13 @@ class PMA_Table
      */
     static public function generateAlter($oldcol, $newcol, $type, $length,
         $attribute, $collation, $null, $default_type, $default_value,
-        $extra, $comment, $move_to
+        $extra, $comment, $virtuality, $expression, $move_to
     ) {
         return PMA_Util::backquote($oldcol) . ' '
             . PMA_Table::generateFieldSpec(
                 $newcol, $type, $length, $attribute,
                 $collation, $null, $default_type, $default_value, $extra,
-                $comment, $move_to
+                $comment, $virtuality, $expression, $move_to
             );
     } // end function
 
@@ -763,9 +722,10 @@ class PMA_Table
     static public function moveCopy($source_db, $source_table, $target_db,
         $target_table, $what, $move, $mode
     ) {
+
         global $err_url;
 
-        /* Try moving table directly */
+        // Try moving the tables directly, using native `RENAME` statement.
         if ($move && $what == 'data') {
             $tbl = new PMA_Table($source_table, $source_db);
             $result = $tbl->rename($target_table, $target_db);
@@ -775,11 +735,11 @@ class PMA_Table
             }
         }
 
-        // set export settings we need
+        // Setting required export settings.
         $GLOBALS['sql_backquotes'] = 1;
         $GLOBALS['asfile']         = 1;
 
-        // Ensure the target is valid
+        // Ensuring the target database is valid.
         if (! $GLOBALS['pma']->databases->exists($source_db, $target_db)) {
             if (! $GLOBALS['pma']->databases->exists($source_db)) {
                 $GLOBALS['message'] = PMA_Message::rawError(
@@ -800,24 +760,40 @@ class PMA_Table
             return false;
         }
 
+        /**
+         * The full name of source table, quoted.
+         * @var string $source
+         */
         $source = PMA_Util::backquote($source_db)
             . '.' . PMA_Util::backquote($source_table);
+
+        // If the target database is not specified, the operation is taking
+        // place in the same database.
         if (! isset($target_db) || ! /*overload*/mb_strlen($target_db)) {
             $target_db = $source_db;
         }
 
-        // Doing a select_db could avoid some problems with replicated databases,
-        // when moving table from replicated one to not replicated one
+        // Selecting the database could avoid some problems with replicated
+        // databases, when moving table from replicated one to not replicated one.
         $GLOBALS['dbi']->selectDb($target_db);
 
+        /**
+         * The full name of target table, quoted.
+         * @var string $target
+         */
         $target = PMA_Util::backquote($target_db)
             . '.' . PMA_Util::backquote($target_table);
 
-        // do not create the table if dataonly
+        // No table is created when this is a data-only operation.
         if ($what != 'dataonly') {
+
             include_once "libraries/plugin_interface.lib.php";
-            // get Export SQL instance
-            /* @var $export_sql_plugin ExportSql */
+
+            /**
+             * Instance used for exporting the current structure of the table.
+             *
+             * @var ExportSql
+             */
             $export_sql_plugin = PMA_getPlugin(
                 "export",
                 "sql",
@@ -835,141 +811,134 @@ class PMA_Table
                 $GLOBALS['sql_auto_increment'] = $_POST['sql_auto_increment'];
             }
 
+            /**
+             * The old structure of the table..
+             * @var string $sql_structure
+             */
             $sql_structure = $export_sql_plugin->getTableDef(
                 $source_db, $source_table, "\n", $err_url, false, false
             );
+
             unset($no_constraints_comments);
-            $parsed_sql =  PMA_SQP_parse($sql_structure);
-            $analyzed_sql = PMA_SQP_analyze($parsed_sql);
-            $i = 0;
-            if (empty($analyzed_sql[0]['create_table_fields'])) {
-                // this is not a CREATE TABLE, so find the first VIEW
-                $target_for_view = PMA_Util::backquote($target_db);
-                while (true) {
-                    if ($parsed_sql[$i]['type'] == 'alpha_reservedWord'
-                        && $parsed_sql[$i]['data'] == 'VIEW'
-                    ) {
-                        break;
-                    }
-                    $i++;
-                }
-            }
-            unset($analyzed_sql);
-            if (PMA_DRIZZLE) {
-                $table_delimiter = 'quote_backtick';
-            } else {
-                $server_sql_mode = $GLOBALS['dbi']->fetchValue(
-                    "SHOW VARIABLES LIKE 'sql_mode'",
-                    0,
-                    1
+
+            // -----------------------------------------------------------------
+            // Phase 0: Preparing structures used.
+
+            /**
+             * The destination where the table is moved or copied to.
+             * @var SqlParser\Components\Expression
+             */
+            $destination = new SqlParser\Components\Expression(
+                $target_db, $target_table, ''
+            );
+
+            // Find server's SQL mode so the builder can generate correct
+            // queries.
+            // One of the options that alters the behaviour is `ANSI_QUOTES`.
+            // This is not availabile for Drizzle.
+            if (!PMA_DRIZZLE) {
+                SqlParser\Context::setMode(
+                    $GLOBALS['dbi']->fetchValue(
+                        "SHOW VARIABLES LIKE 'sql_mode'", 0, 1
+                    )
                 );
-                // ANSI_QUOTES might be a subset of sql_mode, for example
-                // REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,ANSI
-                if (false !== /*overload*/mb_strpos($server_sql_mode, 'ANSI_QUOTES')
-                ) {
-                    $table_delimiter = 'quote_double';
-                } else {
-                    $table_delimiter = 'quote_backtick';
-                }
-                unset($server_sql_mode);
             }
 
-            /* Find table name in query and replace it */
-            while ($parsed_sql[$i]['type'] != $table_delimiter) {
-                $i++;
-            }
+            // -----------------------------------------------------------------
+            // Phase 1: Dropping existent element of the same name (if exists
+            // and required).
 
-            /* no need to backquote() */
-            if (isset($target_for_view)) {
-                // this a view definition; we just found the first db name
-                // that follows DEFINER VIEW
-                // so change it for the new db name
-                $parsed_sql[$i]['data'] = $target_for_view;
-                // then we have to find all references to the source db
-                // and change them to the target db, ensuring we stay into
-                // the $parsed_sql limits
-                $last = $parsed_sql['len'] - 1;
-                $backquoted_source_db = PMA_Util::backquote($source_db);
-                for (++$i; $i <= $last; $i++) {
-                    if ($parsed_sql[$i]['type'] == $table_delimiter
-                        && $parsed_sql[$i]['data'] == $backquoted_source_db
-                        && $parsed_sql[$i - 1]['type'] != 'punct_qualifier'
-                    ) {
-                        $parsed_sql[$i]['data'] = $target_for_view;
-                    }
-                }
-                unset($last,$backquoted_source_db);
-            } else {
-                $parsed_sql[$i]['data'] = $target;
-            }
-
-            /* Generate query back */
-            $sql_structure = PMA_SQP_format($parsed_sql, 'query_only');
-            // If table exists, and 'add drop table' is selected: Drop it!
             if (isset($_REQUEST['drop_if_exists'])
                 && $_REQUEST['drop_if_exists'] == 'true'
             ) {
-                if (PMA_Table::isView($target_db, $target_table)) {
-                    $drop_query = 'DROP VIEW';
-                } else {
-                    $drop_query = 'DROP TABLE';
-                }
-                $drop_query .= ' IF EXISTS '
-                    . PMA_Util::backquote($target_db) . '.'
-                    . PMA_Util::backquote($target_table);
+
+                /**
+                 * Drop statement used for building the query.
+                 * @var SqlParser\Statements\DropStatement $statement
+                 */
+                $statement = new SqlParser\Statements\DropStatement();
+
+                $statement->options = new SqlParser\Components\OptionsArray(
+                    array(
+                        PMA_Table::isView($target_db, $target_table) ?
+                            'VIEW' : 'TABLE',
+                        'IF EXISTS',
+                    )
+                );
+
+                $statement->fields = array($destination);
+
+                // Building the query.
+                $drop_query = $statement->build() . ';';
+
+                // Executing it.
                 $GLOBALS['dbi']->query($drop_query);
+                $GLOBALS['sql_query'] .= "\n" . $drop_query;
 
-                $GLOBALS['sql_query'] .= "\n" . $drop_query . ';';
-
-                // If an existing table gets deleted, maintain any
-                // entries for the PMA_* tables
+                // If an existing table gets deleted, maintain any entries for
+                // the PMA_* tables.
                 $maintain_relations = true;
             }
 
-            @$GLOBALS['dbi']->query($sql_structure);
-            $GLOBALS['sql_query'] .= "\n" . $sql_structure . ';';
+            // -----------------------------------------------------------------
+            // Phase 2: Generating the new query of this structure.
+
+            /**
+             * The parser responsible for parsing the old queries.
+             * @var SqlParser\Parser $parser
+             */
+            $parser = new SqlParser\Parser($sql_structure);
+
+            if (!empty($parser->statements[0])) {
+
+                /**
+                 * The CREATE statement of this structure.
+                 * @var SqlParser\Statements\CreateStatement $statement
+                 */
+                $statement = $parser->statements[0];
+
+                // Changing the destination.
+                $statement->name = $destination;
+
+                // Building back the query.
+                $sql_structure = $statement->build() . ';';
+
+                // Executing it.
+                $GLOBALS['dbi']->query($sql_structure);
+                $GLOBALS['sql_query'] .= "\n" . $sql_structure;
+            }
+
+            // -----------------------------------------------------------------
+            // Phase 3: Adding constraints.
+            // All constraint names are removed because they must be unique.
 
             if (($move || isset($GLOBALS['add_constraints']))
                 && !empty($GLOBALS['sql_constraints_query'])
             ) {
-                $parsed_sql =  PMA_SQP_parse($GLOBALS['sql_constraints_query']);
-                $i = 0;
 
-                // find the first $table_delimiter, it must be the source
-                // table name
-                while ($parsed_sql[$i]['type'] != $table_delimiter) {
-                    $i++;
-                    // maybe someday we should guard against going over limit
-                    //if ($i == $parsed_sql['len']) {
-                    //    break;
-                    //}
-                }
+                $parser = new SqlParser\Parser($GLOBALS['sql_constraints_query']);
 
-                // replace it by the target table name, no need
-                // to backquote()
-                $parsed_sql[$i]['data'] = $target;
+                /**
+                 * The ALTER statement that generates the constraints.
+                 * @var SqlParser\Statements\AlterStatement $statement
+                 */
+                $statement = $parser->statements[0];
 
-                // now we must remove all $table_delimiter that follow a
-                // CONSTRAINT keyword, because a constraint name must be
-                // unique in a db
+                // Changing the altered table to the destination.
+                $statement->table = $destination;
 
-                $cnt = $parsed_sql['len'] - 1;
-
-                for ($j = $i; $j < $cnt; $j++) {
-                    $dataUpper = /*overload*/mb_strtoupper($parsed_sql[$j]['data']);
-                    if ($parsed_sql[$j]['type'] == 'alpha_reservedWord'
-                        && $dataUpper == 'CONSTRAINT'
-                    ) {
-                        if ($parsed_sql[$j+1]['type'] == $table_delimiter) {
-                            $parsed_sql[$j+1]['data'] = '';
-                        }
+                // Removing the name of the constraints.
+                foreach ($statement->altered as $idx => $altered) {
+                    // All constraint names are removed because they must be unique.
+                    if ($altered->options->has('CONSTRAINT')) {
+                        $altered->field = null;
                     }
                 }
 
-                // Generate query back
-                $GLOBALS['sql_constraints_query'] = PMA_SQP_format(
-                    $parsed_sql, 'query_only'
-                );
+                // Building back the query.
+                $GLOBALS['sql_constraints_query'] = $statement->build() . ';';
+
+                // Executing it.
                 if ($mode == 'one_table') {
                     $GLOBALS['dbi']->query($GLOBALS['sql_constraints_query']);
                 }
@@ -979,95 +948,70 @@ class PMA_Table
                 }
             }
 
-            // add indexes to the table
+            // -----------------------------------------------------------------
+            // Phase 4: Adding indexes.
+            // View phase 3.
+
             if (!empty($GLOBALS['sql_indexes'])) {
 
-                $index_queries = array();
-                $sql_indexes = $GLOBALS['sql_indexes'];
-                $GLOBALS['sql_indexes'] = '';
+                $parser = new SqlParser\Parser($GLOBALS['sql_indexes']);
 
-                $parsed_sql = PMA_SQP_parse($sql_indexes);
-                $cnt = $parsed_sql['len'] - 1;
-                $k = 0;
+                /**
+                 * The ALTER statement that generates the indexes.
+                 * @var SqlParser\Statements\AlterStatement $statement
+                 */
+                $statement = $parser->statements[0];
 
-                for ($j = 0; $j < $cnt; $j++) {
-                    if ($parsed_sql[$j]['type'] == 'punct_queryend') {
-                        $index_queries[] = substr(
-                            $sql_indexes, $k, $parsed_sql[$j]['pos'] - $k
-                        );
-                        $k = $parsed_sql[$j]['pos'];
+                // Changing the altered table to the destination.
+                $statement->table = $destination;
+
+                // Removing the name of the constraints.
+                foreach ($statement->altered as $idx => $altered) {
+                    // All constraint names are removed because they must be unique.
+                    if ($altered->options->has('CONSTRAINT')) {
+                        $altered->field = null;
                     }
                 }
 
-                foreach ($index_queries as $index_query) {
+                // Building back the query.
+                $GLOBALS['sql_indexes'] = $statement->build() . ';';
 
-                    $parsed_sql = PMA_SQP_parse($index_query);
-                    $i = 0;
-
-                    while ($parsed_sql[$i]['type'] != $table_delimiter) {
-                        $i++;
-                    }
-
-                    $parsed_sql[$i]['data'] = $target;
-
-                    $cnt = $parsed_sql['len'] - 1;
-
-                    for ($j = $i; $j < $cnt; $j++) {
-                        $dataUpper = /*overload*/mb_strtoupper($parsed_sql[$j]['data']);
-                        if ($parsed_sql[$j]['type'] == 'alpha_reservedWord'
-                            && $dataUpper == 'CONSTRAINT'
-                        ) {
-                            if ($parsed_sql[$j+1]['type'] == $table_delimiter) {
-                                $parsed_sql[$j+1]['data'] = '';
-                            }
-                        }
-                    }
-
-                    $sql_index = PMA_SQP_format($parsed_sql, 'query_only');
-                    if ($mode == 'one_table' || $mode == 'db_copy') {
-                        $GLOBALS['dbi']->query($sql_index);
-                    }
-
-                    $GLOBALS['sql_indexes'] .= $sql_index;
+                // Executing it.
+                if ($mode == 'one_table' || $mode == 'db_copy') {
+                    $GLOBALS['dbi']->query($GLOBALS['sql_indexes']);
                 }
-
                 $GLOBALS['sql_query'] .= "\n" . $GLOBALS['sql_indexes'];
                 if ($mode == 'one_table' || $mode == 'db_copy') {
                     unset($GLOBALS['sql_indexes']);
-
                 }
             }
 
-            /*
-             * add AUTO_INCREMENT to the table
-             *
-             * @todo refactor with similar code above
-             */
+            // -----------------------------------------------------------------
+            // Phase 5: Adding AUTO_INCREMENT.
+
             if (! empty($GLOBALS['sql_auto_increments'])) {
                 if ($mode == 'one_table' || $mode == 'db_copy') {
-                    $parsed_sql =  PMA_SQP_parse($GLOBALS['sql_auto_increments']);
-                    $i = 0;
 
-                    // find the first $table_delimiter, it must be the source
-                    // table name
-                    while ($parsed_sql[$i]['type'] != $table_delimiter) {
-                        $i++;
-                    }
+                    $parser =  new SqlParser\Parser($GLOBALS['sql_auto_increments']);
 
-                    // replace it by the target table name, no need
-                    // to backquote()
-                    $parsed_sql[$i]['data'] = $target;
+                    /**
+                     * The ALTER statement that alters the AUTO_INCREMENT value.
+                     * @var SqlParser\Statements\AlterStatement $statement
+                     */
+                    $statement = $parser->statements[0];
 
-                    // Generate query back
-                    $GLOBALS['sql_auto_increments'] = PMA_SQP_format(
-                        $parsed_sql, 'query_only'
-                    );
+                    // Changing the altered table to the destination.
+                    $statement->table = $destination;
+
+                    // Building back the query.
+                    $GLOBALS['sql_auto_increments'] = $statement->build() . ';';
+
+                    // Executing it.
                     $GLOBALS['dbi']->query($GLOBALS['sql_auto_increments']);
                     $GLOBALS['sql_query'] .= "\n" . $GLOBALS['sql_auto_increments'];
                     unset($GLOBALS['sql_auto_increments']);
                 }
             }
-
         } else {
             $GLOBALS['sql_query'] = '';
         }
@@ -1076,14 +1020,16 @@ class PMA_Table
         if (($what == 'data' || $what == 'dataonly')
             && ! PMA_Table::isView($target_db, $target_table)
         ) {
-            $sql_set_mode = "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO'";
-            $GLOBALS['dbi']->query($sql_set_mode);
-            $GLOBALS['sql_query'] .= "\n\n" . $sql_set_mode . ';';
+            if (! PMA_DRIZZLE) {
+                $sql_set_mode = "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO'";
+                $GLOBALS['dbi']->query($sql_set_mode);
+                $GLOBALS['sql_query'] .= "\n\n" . $sql_set_mode . ';';
+            }
 
             $sql_insert_data = 'INSERT INTO ' . $target
                 . ' SELECT * FROM ' . $source;
             $GLOBALS['dbi']->query($sql_insert_data);
-            $GLOBALS['sql_query']      .= "\n\n" . $sql_insert_data . ';';
+            $GLOBALS['sql_query'] .= "\n\n" . $sql_insert_data . ';';
         }
 
         $GLOBALS['cfgRelation'] = PMA_getRelationsParam();
@@ -1109,7 +1055,7 @@ class PMA_Table
                 $source_table, $target_table
             );
 
-            $GLOBALS['sql_query']      .= "\n\n" . $sql_drop_query . ';';
+            $GLOBALS['sql_query'] .= "\n\n" . $sql_drop_query . ';';
             // end if ($move)
         } else {
             // we are copying
@@ -1287,6 +1233,7 @@ class PMA_Table
                  */
             }
         }
+
         return true;
     }
 
@@ -1821,7 +1768,7 @@ class PMA_Table
         foreach ($columns as $column) {
             $temp = explode('.', $column);
             $column_name = $temp[2];
-            if (PMA_SQP_isKeyWord($column_name)) {
+            if (SqlParser\Context::isKeyword($column_name, true)) {
                 $return[] = $column_name;
             }
         }
@@ -1983,7 +1930,8 @@ class PMA_Table
      *
      * @return boolean True on update succeed or False on failure
      */
-    public function updateDisplayField($disp, $display_field, $cfgRelation) {
+    public function updateDisplayField($disp, $display_field, $cfgRelation)
+    {
         $upd_query = false;
         if ($disp) {
             if ($display_field == '') {
@@ -2036,8 +1984,9 @@ class PMA_Table
      * @return boolean
      */
     public function updateInternalRelations($multi_edit_columns_name,
-                                            $destination_db, $destination_table, $destination_column,
-                                            $cfgRelation, $existrel) {
+        $destination_db, $destination_table, $destination_column,
+        $cfgRelation, $existrel
+    ) {
         $updated = false;
         foreach ($destination_db as $master_field_md5 => $foreign_db) {
             $upd_query = null;
@@ -2120,8 +2069,9 @@ class PMA_Table
      * @return array
      */
     public function updateForeignKeys($destination_foreign_db,
-                                      $multi_edit_columns_name, $destination_foreign_table,
-                                      $destination_foreign_column, $options_array, $table, $existrel_foreign) {
+        $multi_edit_columns_name, $destination_foreign_table,
+        $destination_foreign_column, $options_array, $table, $existrel_foreign
+    ) {
         $html_output = '';
         $preview_sql_data = '';
         $display_query = '';
@@ -2245,8 +2195,8 @@ class PMA_Table
                         );
                     }
                     $html_output .= PMA_Util::showMySQLDocu(
-                            'InnoDB_foreign_key_constraints'
-                        ) . "\n";
+                        'InnoDB_foreign_key_constraints'
+                    ) . "\n";
                 }
             } else {
                 $preview_sql_data .= $create_query . "\n";
@@ -2301,7 +2251,7 @@ class PMA_Table
      * @return string SQL query for foreign key constraint creation
      */
     private function getSQLToCreateForeignKey($table, $field, $foreignDb, $foreignTable,
-                                                  $foreignField, $name = null, $onDelete = null, $onUpdate = null
+        $foreignField, $name = null, $onDelete = null, $onUpdate = null
     ) {
         $sql_query  = 'ALTER TABLE ' . PMA_Util::backquote($table) . ' ADD ';
         // if user entered a constraint name
@@ -2329,6 +2279,71 @@ class PMA_Table
         $sql_query .= ';';
 
         return $sql_query;
+    }
+
+    /**
+     * Returns the generation expression for virtual columns
+     *
+     * @param string $column name of the column
+     *
+     * @return array associative array of column name and their expressions
+     */
+    public function getColumnGenerationExpression($column = null)
+    {
+        $serverType = PMA_Util::getServerType();
+        if ($serverType == 'MySQL'
+            && PMA_MYSQL_INT_VERSION > 50705
+            && ! $GLOBALS['cfg']['Server']['DisableIS']
+        ) {
+            $sql = "SELECT
+                `COLUMN_NAME` AS `Field`,
+                `GENERATION_EXPRESSION` AS `Expression`
+                FROM
+                `information_schema`.`COLUMNS`
+                WHERE
+                `TABLE_SCHEMA` = '" . PMA_Util::sqlAddSlashes($this->_db_name) . "'
+                AND `TABLE_NAME` = '"  . PMA_Util::sqlAddSlashes($this->_name) . "'";
+            if ($column != null) {
+                $sql .= " AND  `COLUMN_NAME` = '"  . PMA_Util::sqlAddSlashes($column) . "'";
+            }
+            $columns = $this->_dbi->fetchResult($sql, 'Field', 'Expression');
+            return $columns;
+        }  else {
+            $createTable = $this->showCreate();
+            if ($createTable) {
+                $parser = new SqlParser\Parser($createTable);
+                /**
+                 * @var CreateStatement $stmt
+                */
+                $stmt = $parser->statements[0];
+                $fields = SqlParser\Utils\Table::getFields($stmt);
+                if ($column != null) {
+                    $expression = isset($fields[$column]['expr']) ?
+                        substr($fields[$column]['expr'], 1, -1) : '';
+                    return array($column => $expression);
+                }
+
+                $ret = array();
+                foreach ($fields as $field => $options) {
+                    if (isset($options['expr'])) {
+                        $ret[$field] = substr($options['expr'], 1, -1);
+                    }
+                }
+                return $ret;
+            }
+        }
+    }
+
+    /**
+     * Returns the CREATE statement for this table
+     */
+    public function showCreate()
+    {
+        return $this->_dbi->fetchValue(
+            'SHOW CREATE TABLE ' . PMA_Util::backquote($this->_db_name) . '.'
+            . PMA_Util::backquote($this->_name),
+            0, 1
+        );
     }
 }
 ?>

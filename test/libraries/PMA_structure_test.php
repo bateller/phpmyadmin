@@ -17,7 +17,6 @@ require_once 'libraries/Theme.class.php';
 require_once 'libraries/database_interface.inc.php';
 require_once 'libraries/Message.class.php';
 require_once 'libraries/sanitizing.lib.php';
-require_once 'libraries/sqlparser.lib.php';
 require_once 'libraries/js_escape.lib.php';
 require_once 'libraries/Tracker.class.php';
 require_once 'libraries/Table.class.php';
@@ -237,14 +236,11 @@ class PMA_Structure_Test extends PHPUnit_Framework_TestCase
             ->will($this->returnValue(false));
 
         $dbi->expects($this->any())
-            ->method('fetchSingleRow')
-            ->with($show_create_query)
+            ->method('fetchValue')
+            ->with($show_create_query, 0, 1)
             ->will(
                 $this->returnValue(
-                    array(
-                        'Table' => 'PMA_Table',
-                        'Create Table' => $expected_result
-                    )
+                    $expected_result
                 )
             );
 

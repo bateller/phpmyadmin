@@ -72,10 +72,20 @@ phpMyAdmin - ChangeLog
 + rfe #1603 select structure or data for each table when exporting
 - bug #4916 Autocomplete completes the original table name when joining multiple aliased tables
 + rfe       Remove configuration storage data related to a user upon deleting the user
++ rfe #1685 Improved processlist for mariadb
++ rfe #1686 Warn about "Any user" potential problem
++ rfe #1683 Hide/diable edit links for read-only variables
++ rfe #1680 Human readable/writable URLs (html5 api)
++ rfe       Support virtual columns in MySQL 5.7.5+
++ rfe #1517 Support for virtual/persistent columns in MariaDB
 
 4.4.12.0 (not yet released)
 - bug       Saved chart image does not have a proper name or an extension
 - bug #4976 Timepicker CSS issues in Original theme
+- bug #4975 Move/Copy/Rename operations on Table/Db fail on Drizzle server
+- bug #4826 Two inline edit windows
+- bug #4979 Problem when import *.ods file
+- bug       Add missing head tag
 
 4.4.11.0 (2015-07-06)
 - bug       Missing selected/entered values when editing active options in visual query builder

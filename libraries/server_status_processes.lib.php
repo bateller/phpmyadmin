@@ -13,21 +13,19 @@ if (! defined('PHPMYADMIN')) {
 }
 
 /**
- * Prints html for server status processes
+ * Prints html for auto refreshing processes list
  *
  * @return string
  */
-function PMA_getHtmlForServerProcesses()
+function PMA_getHtmlForProcessListAutoRefresh()
 {
-    $retval = PMA_getHtmlForServerProcesslist();
-
     $notice = PMA_Message::notice(
         __(
             'Note: Enabling the auto refresh here might cause '
             . 'heavy traffic between the web server and the MySQL server.'
         )
     )->getDisplay();
-    $retval .= $notice . '<div class="tabLinks">';
+    $retval  = $notice . '<div class="tabLinks">';
     $retval .= '<label>' . __('Refresh rate') . ': ';
     $retval .= PMA_ServerStatusData::getHtmlForRefreshList(
         'refreshRate',
@@ -95,6 +93,10 @@ function PMA_getHtmlForServerProcesslist()
             'order_by_field' => 'State'
         ),
         array(
+            'column_name' => __('Progress'),
+            'order_by_field' => 'Progress'
+        ),
+        array(
             'column_name' => __('SQL query'),
             'order_by_field' => 'Info'
         )
@@ -117,6 +119,9 @@ function PMA_getHtmlForServerProcesslist()
                 . ($show_full_sql
                 ? 'LEFT JOIN data_dictionary.SESSIONS s ON s.session_id = p.id'
                 : '');
+        if (! empty($_REQUEST['showExecuting'])) {
+            $sql_query .= ' WHERE p.state = "executing" ';
+        }
         if (! empty($_REQUEST['order_by_field'])
             && ! empty($_REQUEST['sort_order'])
         ) {
@@ -246,7 +251,7 @@ function PMA_getHtmlForProcessListFilter()
     $retval  = '';
     $retval .= '<fieldset id="tableFilter">';
     $retval .= '<legend>' . __('Filters') . '</legend>';
-    $retval .= '<form action="server_status_processes.php?'
+    $retval .= '<form action="server_status_processes.php'
         . PMA_URL_getCommon($url_params) . '">';
     $retval .= '<input type="submit" value="' . __('Refresh') . '" />';
     $retval .= '<div class="formelement">';
@@ -307,6 +312,8 @@ function PMA_getHtmlForServerProcessItem($process, $odd_row, $show_full_sql)
     $retval .= '<td class="value">' . $process['Time'] . '</td>';
     $processStatusStr = empty($process['State']) ? '---' : $process['State'];
     $retval .= '<td>' . $processStatusStr . '</td>';
+    $processProgress = empty($process['Progress']) ? '---' : $process['Progress'];
+    $retval .= '<td>' . $processProgress . '</td>';
     $retval .= '<td>';
 
     if (empty($process['Info'])) {

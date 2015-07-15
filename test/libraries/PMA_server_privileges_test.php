@@ -16,7 +16,6 @@ require_once 'libraries/Theme.class.php';
 require_once 'libraries/database_interface.inc.php';
 require_once 'libraries/Message.class.php';
 require_once 'libraries/sanitizing.lib.php';
-require_once 'libraries/sqlparser.lib.php';
 require_once 'libraries/js_escape.lib.php';
 require_once 'libraries/Message.class.php';
 require_once 'libraries/Response.class.php';
@@ -1647,7 +1646,7 @@ class PMA_ServerPrivileges_Test extends PHPUnit_Framework_TestCase
 
         //Create a new user with the same privileges
         $this->assertContains(
-            "Create a new user with the same privileges",
+            "Create a new user account with the same privileges",
             $html
         );
 
@@ -1835,11 +1834,11 @@ class PMA_ServerPrivileges_Test extends PHPUnit_Framework_TestCase
 
         //labels
         $this->assertContains(
-            __('Add user'),
+            __('Add user account'),
             $html
         );
         $this->assertContains(
-            __('Remove selected users'),
+            __('Remove selected user accounts'),
             $html
         );
         $this->assertContains(
@@ -1872,7 +1871,7 @@ class PMA_ServerPrivileges_Test extends PHPUnit_Framework_TestCase
             'menuswork' => false,
             'navwork' => false,
             'savedsearcheswork' => false,
-            'designer_settingswork' => false,
+            'designersettingswork' => false,
         );
 
         $queries = array();
@@ -1934,11 +1933,11 @@ class PMA_ServerPrivileges_Test extends PHPUnit_Framework_TestCase
 
         //title
         $this->assertContains(
-            __('Edit Privileges:'),
+            __('Edit privileges:'),
             $html
         );
         $this->assertContains(
-            __('User'),
+            __('User account'),
             $html
         );
 
