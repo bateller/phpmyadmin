@@ -20,8 +20,6 @@ class Node_Event_Container extends Node_DatabaseChild_Container
 {
     /**
      * Initialises the class
-     *
-     * @return Node_Event_Container
      */
     public function __construct()
     {
@@ -53,4 +51,3 @@ class Node_Event_Container extends Node_DatabaseChild_Container
     }
 }
 
-?>

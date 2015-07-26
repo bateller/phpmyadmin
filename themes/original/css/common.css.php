@@ -247,10 +247,6 @@ fieldset .formelement {
     white-space:        nowrap;
 }
 
-.read_only_var {
-    padding: 20%;
-}
-
 /* revert for Gecko */
 fieldset div[class=formelement] {
     white-space:        normal;
@@ -1174,6 +1170,13 @@ div#profilingchart {
 }
 /* end profiling */
 
+/* table charting */
+.chartOption {
+    float: <?php echo $left; ?>;
+    margin-<?php echo $right;?>: 40px;
+}
+/* end table charting */
+
 /* querybox */
 
 div#sqlquerycontainer {
@@ -1352,6 +1355,7 @@ div.sqlvalidate {
     margin-bottom:      0;
     max-height:         10em;
     overflow:           auto;
+    direction:          ltr;
 }
 
 .result_query div.sqlOuter,
@@ -3204,6 +3208,21 @@ th.headerSortDown .sorticon, th.headerSortUp:hover .sorticon {
     background-image: url(<?php echo $_SESSION['PMA_Theme']->getImgPath('s_asc.png');?>);
 }
 /* end of styles of sortable tables */
+
+/* styles for jQuery-ui to support rtl languages */
+body .ui-dialog .ui-dialog-titlebar-close {
+    <?php echo $right; ?>: .3em;
+    <?php echo $left; ?>: initial;
+}
+
+body .ui-dialog .ui-dialog-title {
+    float: <?php echo $left; ?>;
+}
+
+body .ui-dialog .ui-dialog-buttonpane .ui-dialog-buttonset {
+    float: <?php echo $right; ?>;
+}
+/* end of styles for jQuery-ui to support rtl languages */
 
 /* Override some jQuery-ui styling to have square corners */
 body .ui-corner-all,

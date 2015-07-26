@@ -454,7 +454,9 @@ class PMA_Util
         $mysql = '5.5';
         $lang = 'en';
         if (defined('PMA_MYSQL_INT_VERSION')) {
-            if (PMA_MYSQL_INT_VERSION >= 50600) {
+            if (PMA_MYSQL_INT_VERSION >= 50700) {
+                $mysql = '5.7';
+            } else if (PMA_MYSQL_INT_VERSION >= 50600) {
                 $mysql = '5.6';
             } else if (PMA_MYSQL_INT_VERSION >= 50500) {
                 $mysql = '5.5';
@@ -804,12 +806,9 @@ class PMA_Util
             $tbl_is_view = $table['TABLE_TYPE'] == 'VIEW';
 
             if ($tbl_is_view || $GLOBALS['dbi']->isSystemSchema($db)) {
-                $rowCount = PMA_Table::countRecords(
-                    $db,
-                    $table['Name'],
-                    false,
-                    $tbl_is_view
-                );
+                $rowCount = $GLOBALS['dbi']
+                    ->getTable($db, $table['Name'])
+                    ->countRecords();
             }
         }
         return $rowCount;
@@ -2189,7 +2188,7 @@ class PMA_Util
             // because there is some caching in the function).
             if (isset($meta->orgtable)
                 && ($meta->table != $meta->orgtable)
-                && ! PMA_Table::isView($GLOBALS['db'], $meta->table)
+                && ! $GLOBALS['dbi']->getTable($GLOBALS['db'], $meta->table)->isView()
             ) {
                 $meta->table = $meta->orgtable;
             }
@@ -3369,46 +3368,31 @@ class PMA_Util
      */
     public static function getScriptNameForOption($target, $location)
     {
-        $retval = '';
-
         if ($location == 'server') {
             // Values for $cfg['DefaultTabServer']
             switch ($target) {
             case 'welcome':
-                $retval = 'index.php';
-                break;
+                return 'index.php';
             case 'databases':
-                $retval = 'server_databases.php';
-                break;
+                return 'server_databases.php';
             case 'status':
-                $retval = 'server_status.php';
-                break;
+                return 'server_status.php';
             case 'variables':
-                $retval = 'server_variables.php';
-                break;
+                return 'server_variables.php';
             case 'privileges':
-                $retval = 'server_privileges.php';
-                break;
-            default:
-                $retval = $target;
+                return 'server_privileges.php';
             }
         } elseif ($location == 'database') {
             // Values for $cfg['DefaultTabDatabase']
             switch ($target) {
             case 'structure':
-                $retval = 'db_structure.php';
-                break;
+                return 'db_structure.php';
             case 'sql':
-                $retval = 'db_sql.php';
-                break;
+                return 'db_sql.php';
             case 'search':
-                $retval = 'db_search.php';
-                break;
+                return 'db_search.php';
             case 'operations':
-                $retval = 'db_operations.php';
-                break;
-            default:
-                $retval = $target;
+                return 'db_operations.php';
             }
         } elseif ($location == 'table') {
             // Values for $cfg['DefaultTabTable'],
@@ -3416,28 +3400,19 @@ class PMA_Util
             // $cfg['NavigationTreeDefaultTabTable2']
             switch ($target) {
             case 'structure':
-                $retval = 'tbl_structure.php';
-                break;
+                return 'tbl_structure.php';
             case 'sql':
-                $retval = 'tbl_sql.php';
-                break;
+                return 'tbl_sql.php';
             case 'search':
-                $retval = 'tbl_select.php';
-                break;
+                return 'tbl_select.php';
             case 'insert':
-                $retval = 'tbl_change.php';
-                break;
+                return 'tbl_change.php';
             case 'browse':
-                $retval = 'sql.php';
-                break;
-            default:
-                $retval = $target;
+                return 'sql.php';
             }
-        } else {
-            $retval = $target;
         }
 
-        return $retval;
+        return $target;
     }
 
     /**
@@ -4835,6 +4810,8 @@ class PMA_Util
 
     /**
      * Returns whether the database server supports virtual columns
+     *
+     * @return bool
      */
     public static function isVirtualColumnsSupported()
     {
@@ -4842,6 +4819,24 @@ class PMA_Util
         return $serverType == 'MySQL' && PMA_MYSQL_INT_VERSION >= 50705
              || ($serverType == 'MariaDB' && PMA_MYSQL_INT_VERSION >= 50200);
     }
+
+    /**
+     * Returns the proper class clause according to the column type
+     *
+     * @param string $type the column type
+     *
+     * @return string $class_clause the HTML class clause
+     */
+    public static function getClassForType($type)
+    {
+        if ('set' == $type
+            || 'enum' == $type
+        ) {
+            $class_clause = '';
+        } else {
+            $class_clause = ' class="nowrap"';
+        }
+        return $class_clause;
+    }
 }
 
-?>

@@ -59,7 +59,10 @@ function PMA_queryAsControlUser($sql, $show_error = true, $options = 0)
  */
 function PMA_getRelationsParam()
 {
-    if (empty($_SESSION['relation'][$GLOBALS['server']])) {
+    if (empty($_SESSION['relation'][$GLOBALS['server']])
+        || (empty($_SESSION['relation'][$GLOBALS['server']]['PMA_VERSION']))
+        || $_SESSION['relation'][$GLOBALS['server']]['PMA_VERSION'] != PMA_VERSION
+    ) {
         $_SESSION['relation'][$GLOBALS['server']] = PMA_checkRelationsParam();
     }
 
@@ -445,6 +448,8 @@ function PMA_getDiagMessageForParameter($parameter,
 function PMA_checkRelationsParam()
 {
     $cfgRelation                   = array();
+    $cfgRelation['PMA_VERSION']    = PMA_VERSION;
+
     $cfgRelation['relwork']        = false;
     $cfgRelation['displaywork']    = false;
     $cfgRelation['bookmarkwork']   = false;
@@ -742,7 +747,9 @@ function PMA_getForeigners($db, $table, $column = '', $source = 'both')
              * @var CreateStatement $stmt
              */
             $stmt = $parser->statements[0];
-            $foreign['foreign_keys_data'] = SqlParser\Utils\Table::getForeignKeys($stmt);
+            $foreign['foreign_keys_data'] = SqlParser\Utils\Table::getForeignKeys(
+                $stmt
+            );
         }
     }
 
@@ -1324,7 +1331,8 @@ function PMA_getForeignData(
         // We could also do the SELECT anyway, with a LIMIT, and ensure that
         // the current value of the field is one of the choices.
 
-        $the_total   = PMA_Table::countRecords($foreign_db, $foreign_table, true);
+        $the_total = $GLOBALS['dbi']->getTable($foreign_db, $foreign_table)
+            ->countRecords(true);
 
         if ($override_total == true
             || $the_total < $GLOBALS['cfg']['ForeignKeyMaxLimit']
@@ -1975,4 +1983,3 @@ function PMA_getRelationsAndStatus($condition, $db, $table)
     } // end if
     return(array($res_rel, $have_rel));
 }
-?>

@@ -220,7 +220,8 @@ function PMA_getHtmlForActivateDeactivateTracking(
     );
     $html .= '</legend>';
     $html .= '<input type="hidden" name="version" value="' . $last_version . '" />';
-    $html .= '<input type="hidden" name="toggle_activation" value="' . $value . '" />';
+    $html .= '<input type="hidden" name="toggle_activation" value="' . $value
+        . '" />';
     $html .= '<input type="submit" value="' . $button . '" />';
     $html .= '</fieldset>';
     $html .= '</form>';
@@ -1337,7 +1338,7 @@ function PMA_createTrackingVersion()
         $GLOBALS['table'],
         $_REQUEST['version'],
         $tracking_set,
-        PMA_Table::isView($GLOBALS['db'], $GLOBALS['table'])
+        $GLOBALS['dbi']->getTable($GLOBALS['db'], $GLOBALS['table'])->isView()
     );
     if ($versionCreated) {
         $msg = PMA_Message::success(
@@ -1370,7 +1371,7 @@ function PMA_createTrackingForMultipleTables($selected)
             $selected_table,
             $_REQUEST['version'],
             $tracking_set,
-            PMA_Table::isView($GLOBALS['db'], $selected_table)
+            $GLOBALS['dbi']->getTable($GLOBALS['db'], $selected_table)->isView()
         );
     }
 }
@@ -1444,4 +1445,3 @@ function PMA_getVersionStatus($version)
         return __('not active');
     }
 }
-?>

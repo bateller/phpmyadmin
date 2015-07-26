@@ -112,6 +112,17 @@ function PMA_getSQLEditor($textarea, options, resize) {
             mode: "text/x-mysql",
             lineWrapping: true
         };
+
+        if (CodeMirror.sqlLint) {
+            $.extend(defaults, {
+                gutters: ["CodeMirror-lint-markers"],
+                lint: {
+                    "getAnnotations": CodeMirror.sqlLint,
+                    "async": true,
+                }
+            });
+        }
+
         $.extend(true, defaults, options);
 
         // create CodeMirror editor
@@ -850,31 +861,22 @@ AJAX.registerOnload('functions.js', function () {
      */
 
     $(document).on('click', 'input:checkbox.checkall', function (e) {
-        var $tr = $(this).closest('tr');
-        var $table = $(this).closest('table');
-
-        // make the table unselectable (to prevent default highlighting when shift+click)
-        //$tr.parents('table').noSelect();
+        $this = $(this);
+        var $tr = $this.closest('tr');
+        var $table = $this.closest('table');
 
         if (!e.shiftKey || last_clicked_row == -1) {
             // usual click
 
-            // XXX: FF fires two click events for <label> (label and checkbox), so we need to handle this differently
-            var $checkbox = $tr.find(':checkbox');
-            if ($checkbox.length) {
-                // checkbox in a row, add or remove class depending on checkbox state
-                var checked = $checkbox.prop('checked');
-                if (!$(e.target).is(':checkbox, label')) {
-                    checked = !checked;
-                    $checkbox.prop('checked', checked).trigger('change');
-                }
-                $tr.toggleClass('marked', checked);
-                last_click_checked = checked;
+            var $checkbox = $tr.find(':checkbox.checkall');
+            var checked = $this.prop('checked');
+            $checkbox.prop('checked', checked).trigger('change');
+            if (checked) {
+                $tr.addClass('marked');
             } else {
-                // normal data table, just toggle class
-                $tr.toggleClass('marked');
-                last_click_checked = false;
+                $tr.removeClass('marked');
             }
+            last_click_checked = checked;
 
             // remember the last clicked row
             last_clicked_row = last_click_checked ? $table.find('tr.odd:not(.noclick), tr.even:not(.noclick)').index($tr) : -1;
@@ -4707,3 +4709,26 @@ function isStorageSupported(type)
     }
     return false;
 }
+
+/**
+ * Unbind all event handlers before tearing down a page
+ */
+AJAX.registerTeardown('functions.js', function(){
+    $(document).off('keydown', 'form input, form textarea, form select');
+});
+
+AJAX.registerOnload('functions.js', function () {
+    /**
+     * Handle 'Ctrl/Alt + Enter' form submits
+     */
+    $('form input, form textarea, form select').on('keydown', function(e){
+        if((e.ctrlKey && e.which == 13) || (e.altKey && e.which == 13)) {
+            $form = $(this).closest('form');
+            if (! $form.find('input[type="submit"]') ||
+                ! $form.find('input[type="submit"]').click()
+            ) {
+                $form.submit();
+            }
+        }
+    });
+});

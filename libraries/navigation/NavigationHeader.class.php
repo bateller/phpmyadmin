@@ -103,7 +103,6 @@ class PMA_NavigationHeader
         }
 
         $useLogoLink = true;
-        $logoLink = null;
         $linkAttriks = null;
         $logoLink = trim(
             htmlspecialchars($GLOBALS['cfg']['NavigationLogoLink'])
@@ -246,4 +245,3 @@ class PMA_NavigationHeader
         return $retval;
     }
 }
-?>

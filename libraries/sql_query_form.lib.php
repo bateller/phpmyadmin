@@ -163,6 +163,7 @@ function PMA_initQueryForm($query)
         }
     } else {
         $db     = $GLOBALS['db'];
+        $table  = $GLOBALS['table'];
         // Get the list and number of fields
         // we do a try_query here, because we could be in the query window,
         // trying to synchronize and the table has not yet been created
@@ -170,13 +171,12 @@ function PMA_initQueryForm($query)
             $db, $GLOBALS['table'], null, true
         );
 
-        $tmp_db_link = '<a href="' . PMA_Util::getScriptNameForOption(
-            $GLOBALS['cfg']['DefaultTabDatabase'], 'database'
-        )
-            . PMA_URL_getCommon(array('db' => $db)) . '"';
-        $tmp_db_link .= '>'
-            . htmlspecialchars($db) . '</a>';
-        $legend = sprintf(__('Run SQL query/queries on database %s'), $tmp_db_link);
+        $tmp_tbl_link = '<a href="' . PMA_Util::getScriptNameForOption(
+            $GLOBALS['cfg']['DefaultTabTable'], 'table'
+        ) . PMA_URL_getCommon(array('db' => $db, 'table' => $table)) . '" >';
+        $tmp_tbl_link .= htmlspecialchars($db)
+            . '.' . htmlspecialchars($table) . '</a>';
+        $legend = sprintf(__('Run SQL query/queries on table %s'), $tmp_tbl_link);
         if (empty($query)) {
             $query = PMA_Util::expandUserString(
                 $GLOBALS['cfg']['DefaultQueryTable'], 'backquote'
@@ -228,7 +228,6 @@ function PMA_getHtmlForSqlQueryFormInsert(
         . '<textarea tabindex="100" name="sql_query" id="sqlquery"'
         . '  cols="' . $GLOBALS['cfg']['TextareaCols'] . '"'
         . '  rows="' . $height . '"'
-        . '  dir="' . $GLOBALS['text_dir'] . '"'
         . $auto_sel . $locking . '>'
         . htmlspecialchars($query)
         . '</textarea>';
@@ -253,18 +252,14 @@ function PMA_getHtmlForSqlQueryFormInsert(
         $html .= '<input type="button" value="' . __('Format') . '" id="format"'
             . ' class="button sqlbutton" />';
     }
-    $html .= '<input type="button" value="' . __('Get auto-saved query') . '" id="saved"'
-        . ' class="button sqlbutton" />';
-
-    // Disable/Enable foreign key checks
-    $html .= '<div>';
-    $html .= PMA_Util::getFKCheckbox();
-    $html .= '</div>';
+    $html .= '<input type="button" value="' . __('Get auto-saved query')
+        . '" id="saved" class="button sqlbutton" />';
 
     // parameter binding
     $html .= '<div>';
     $html .= '<input type="checkbox" name="parameterized" id="parameterized" />';
     $html .= '<label for="parameterized">' . __('Bind parameters') . '</label>';
+    $html .= PMA_Util::showDocu('faq', 'faq6-40');
     $html .= '<div id="parametersDiv"></div>';
     $html .= '</div>';
 
@@ -335,20 +330,24 @@ function PMA_getHtmlForSqlQueryFormInsert(
 
     $html .= '<fieldset id="queryboxfooter" class="tblFooters">' . "\n";
     $html .= '<div class="formelement">' . "\n";
-
     $html .= '</div>' . "\n";
-    $html .= '<div class="formelement">' . "\n";
+
+    $html .= '<div class="formelement">';
     $html .= '<label for="id_sql_delimiter">[ ' . __('Delimiter')
         . '</label>' . "\n";
     $html .= '<input type="text" name="sql_delimiter" tabindex="131" size="3" '
         . 'value="' . $delimiter . '" '
         . 'id="id_sql_delimiter" /> ]';
+    $html .= '</div>';
 
+    $html .= '<div class="formelement">';
     $html .= '<input type="checkbox" name="show_query" value="1" '
         . 'id="checkbox_show_query" tabindex="132" checked="checked" />'
         . '<label for="checkbox_show_query">' . __('Show this query here again')
         . '</label>';
+    $html .= '</div>';
 
+    $html .= '<div class="formelement">';
     $html .= '<input type="checkbox" name="retain_query_box" value="1" '
         . 'id="retain_query_box" tabindex="133" '
         . ($GLOBALS['cfg']['RetainQueryBox'] === false
@@ -356,13 +355,20 @@ function PMA_getHtmlForSqlQueryFormInsert(
         . ' />'
         . '<label for="retain_query_box">' . __('Retain query box')
         . '</label>';
+    $html .= '</div>';
 
+    $html .= '<div class="formelement">';
     $html .= '<input type="checkbox" name="rollback_query" value="1" '
         . 'id="rollback_query" tabindex="134" />'
         . '<label for="rollback_query">' . __('Rollback when finished')
         . '</label>';
+    $html .= '</div>';
 
-    $html .= '</div>' . "\n";
+    // Disable/Enable foreign key checks
+    $html .= '<div class="formelement">';
+    $html .= PMA_Util::getFKCheckbox();
+    $html .= '</div>';
+
     $html .= '<input type="submit" id="button_submit_query" name="SQL"';
 
     $html .= ' tabindex="200" value="' . __('Go') . '" />' . "\n";
@@ -504,4 +510,3 @@ function PMA_getHtmlForSqlQueryFormUpload()
 
     return $html;
 }
-?>

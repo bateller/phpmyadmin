@@ -800,8 +800,8 @@ function PMA_getHtmlForRequires($row)
         . 'REQUIRE SUBJECT'
         . '</dfn></code></label>';
     $html_output .= '<input type="text" name="x509_subject" id="text_x509_subject" '
-        . 'value="' . (isset($row['x509_subject']) ? $row['x509_subject'] : '') . '" '
-        . 'size=80" title="'
+        . 'value="' . (isset($row['x509_subject']) ? $row['x509_subject'] : '')
+        . '" size=80" title="'
         . __(
             'Requires that a valid X509 certificate with this subject be presented.'
         )
@@ -837,7 +837,9 @@ function PMA_getHtmlForRequires($row)
             'Requires SSL-encrypted connections.'
         )
         . '"'
-        . ((isset($row['ssl_type']) && ($row['ssl_type'] == 'ANY' || $row['ssl_type'] == ''))
+        . ((isset($row['ssl_type'])
+            && ($row['ssl_type'] == 'ANY'
+                || $row['ssl_type'] == ''))
             ? ' checked="checked"'
             : ''
         )
@@ -1500,12 +1502,12 @@ function PMA_getHtmlForLoginInformationFields($mode = 'new')
 
     $html_output .= '<div class="item">' . "\n"
         . '<label for="select_pred_hostname">' . "\n"
-        . '    ' . __('Host:') . "\n"
+        . '    ' . __('Host name:') . "\n"
         . '</label>' . "\n";
 
     $html_output .= '<span class="options">' . "\n"
         . '    <select name="pred_hostname" id="select_pred_hostname" '
-        . 'title="' . __('Host') . '"' . "\n";
+        . 'title="' . __('Host name') . '"' . "\n";
     $_current_user = $GLOBALS['dbi']->fetchValue('SELECT USER();');
     if (! empty($_current_user)) {
         $thishost = str_replace(
@@ -1607,8 +1609,9 @@ function PMA_getHtmlForLoginInformationFields($mode = 'new')
         . $hostname_length . '" value="'
         // use default value of '%' to match with the default 'Any host'
         . htmlspecialchars(isset($GLOBALS['hostname']) ? $GLOBALS['hostname'] : '%')
-        . '" title="' . __('Host')
-        . '" onchange="pred_hostname.value = \'userdefined\'; this.required = true;" '
+        . '" title="' . __('Host name')
+        . '" onchange="pred_hostname.value = \'userdefined\'; '
+        . 'this.required = true;" '
         . ((isset($GLOBALS['pred_hostname'])
                 && $GLOBALS['pred_hostname'] == 'userdefined'
             )
@@ -1658,7 +1661,8 @@ function PMA_getHtmlForLoginInformationFields($mode = 'new')
         . '</span>' . "\n"
         . '<input type="password" id="text_pma_pw" name="pma_pw" '
         . 'title="' . __('Password') . '" '
-        . 'onchange="pred_password.value = \'userdefined\'; this.required = true; pma_pw2.required = true;" '
+        . 'onchange="pred_password.value = \'userdefined\'; this.required = true; '
+        . 'pma_pw2.required = true;" '
         . (isset($GLOBALS['username']) ? '' : 'required="required"')
         . '/>' . "\n"
         . '</div>' . "\n";
@@ -1671,7 +1675,8 @@ function PMA_getHtmlForLoginInformationFields($mode = 'new')
         . '<span class="options">&nbsp;</span>' . "\n"
         . '<input type="password" name="pma_pw2" id="text_pma_pw2" '
         . 'title="' . __('Re-type') . '" '
-        . 'onchange="pred_password.value = \'userdefined\'; this.required = true; pma_pw.required = true;" '
+        . 'onchange="pred_password.value = \'userdefined\'; this.required = true; '
+        . 'pma_pw.required = true;" '
         . (isset($GLOBALS['username']) ? '' : 'required="required"')
         . '/>' . "\n"
         . '</div>' . "\n"
@@ -2076,7 +2081,7 @@ function PMA_getHtmlForSpecificDbPrivileges($db)
         $html_output .= PMA_getHtmlTableBodyForSpecificDbOrTablePrivs($privMap, $db);
         $html_output .= '</table>';
 
-        $html_output .= '<div style="float:left;">';
+        $html_output .= '<div class="floatleft">';
         $html_output .= PMA_Util::getWithSelected(
             $GLOBALS['pmaThemeImage'], $GLOBALS['text_dir'], "usersForm"
         );
@@ -2155,7 +2160,7 @@ function PMA_getHtmlForSpecificTablePrivileges($db, $table)
         $html_output .= PMA_getHtmlTableBodyForSpecificDbOrTablePrivs($privMap, $db);
         $html_output .= '</table>';
 
-        $html_output .= '<div style="float:left;">';
+        $html_output .= '<div class="floatleft">';
         $html_output .= PMA_Util::getWithSelected(
             $GLOBALS['pmaThemeImage'], $GLOBALS['text_dir'], "usersForm"
         );
@@ -2238,8 +2243,8 @@ function PMA_getHtmlForPrivsTableHead()
     return '<thead>'
         . '<tr>'
         . '<th></th>'
-        . '<th>' . __('User') . '</th>'
-        . '<th>' . __('Host') . '</th>'
+        . '<th>' . __('User name') . '</th>'
+        . '<th>' . __('Host name') . '</th>'
         . '<th>' . __('Type') . '</th>'
         . '<th>' . __('Privileges') . '</th>'
         . '<th>' . __('Grant') . '</th>'
@@ -2295,7 +2300,8 @@ function PMA_getHtmlTableBodyForSpecificDbOrTablePrivs($privMap, $db)
                 $html_output .= ' rowspan="' . $nbPrivileges . '"';
             }
             $html_output .= '>';
-            $html_output .= '<input type="checkbox" class="checkall" name="selected_usr[]" '
+            $html_output .= '<input type="checkbox" class="checkall" '
+                . 'name="selected_usr[]" '
                 . 'id="checkbox_sel_users_' . ($index_checkbox++) . '" '
                 . 'value="' . $value . '" /></td>' . "\n";
 
@@ -2630,7 +2636,7 @@ function PMA_getExtraDataForAjaxBehavior(
                 . '</td>' . "\n";
         }
 
-        if (isset($cfgRelation['menuswork']) && $user_group_count > 0) {
+        if ($cfgRelation['menuswork'] && $user_group_count > 0) {
             $new_user_string .= '<td>'
                 . PMA_getUserGroupEditLink($username)
                 . '</td>' . "\n";
@@ -3200,7 +3206,7 @@ function PMA_getUsersOverview($result, $db_rights, $pmaThemeImage, $text_dir)
         . '<thead>' . "\n"
         . '<tr><th></th>' . "\n"
         . '<th>' . __('User name') . '</th>' . "\n"
-        . '<th>' . __('Host') . '</th>' . "\n"
+        . '<th>' . __('Host name') . '</th>' . "\n"
         . '<th>' . __('Password') . '</th>' . "\n"
         . '<th>' . __('Global privileges') . ' '
         . PMA_Util::showHint(
@@ -3221,7 +3227,7 @@ function PMA_getUsersOverview($result, $db_rights, $pmaThemeImage, $text_dir)
     $html_output .= '</tbody>'
         . '</table>' . "\n";
 
-    $html_output .= '<div style="float:left;">'
+    $html_output .= '<div class="floatleft">'
         . PMA_Util::getWithSelected($pmaThemeImage, $text_dir, "usersForm") . "\n";
 
     $html_output .= PMA_Util::getButtonOrImage(
@@ -4694,4 +4700,3 @@ function PMA_getSqlQueriesForDisplayAndAddUser($username, $hostname, $password)
         $sql_query
     );
 }
-?>

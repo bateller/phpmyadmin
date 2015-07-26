@@ -67,7 +67,8 @@ foreach ($tables as $table) {
     /**
      * Gets table information
      */
-    $show_comment = PMA_Table::sGetStatusInfo($db, $table, 'TABLE_COMMENT');
+    $show_comment = $GLOBALS['dbi']->getTable($db, $table)
+        ->sGetStatusInfo('TABLE_COMMENT');
 
     /**
      * Gets table keys and retains them
@@ -123,14 +124,7 @@ foreach ($tables as $table) {
 
         // reformat mysql query output
         // set or enum types: slashes single quotes inside options
-        if ('set' == $extracted_columnspec['type']
-            || 'enum' == $extracted_columnspec['type']
-        ) {
-            $type_nowrap  = '';
 
-        } else {
-            $type_nowrap  = ' class="nowrap"';
-        }
         $type = htmlspecialchars($extracted_columnspec['print_type']);
         $attribute     = $extracted_columnspec['attribute'];
         if (! isset($row['Default'])) {
@@ -152,7 +146,12 @@ foreach ($tables as $table) {
             echo ' <em>(' . __('Primary') . ')</em>';
         }
         echo '</td>';
-        echo '<td' . $type_nowrap . ' lang="en" dir="ltr">' . $type . '</td>';
+        echo '<td'
+            . PMA_Util::getClassForType(
+                $extracted_columnspec['type']
+            )
+            . ' lang="en" dir="ltr">' . $type . '</td>';
+
         echo '<td>';
         echo (($row['Null'] == 'NO') ? __('No') : __('Yes'));
         echo '</td>';

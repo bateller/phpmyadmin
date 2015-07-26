@@ -2763,6 +2763,14 @@ class PMA_InsertEditTest extends PHPUnit_Framework_TestCase
                 )
             );
 
+        $dbi->expects($this->any())
+            ->method('getTable')
+            ->will(
+                $this->returnValue(
+                    new PMA_Table('table', 'db')
+                )
+            );
+
         $GLOBALS['dbi'] = $dbi;
 
         $this->assertEquals(
@@ -2862,7 +2870,7 @@ class PMA_InsertEditTest extends PHPUnit_Framework_TestCase
             $actual
         );
         $this->assertContains(
-            '<span class="column_type">varchar(20)</span>',
+            '<span class="column_type" dir="ltr">varchar(20)</span>',
             $actual
         );
         $this->assertContains(
@@ -2916,7 +2924,7 @@ class PMA_InsertEditTest extends PHPUnit_Framework_TestCase
             $actual
         );
         $this->assertContains(
-            '<span class="column_type">datetime</span>',
+            '<span class="column_type" dir="ltr">datetime</span>',
             $actual
         );
         $this->assertContains(
@@ -2972,7 +2980,7 @@ class PMA_InsertEditTest extends PHPUnit_Framework_TestCase
             $actual
         );
         $this->assertContains(
-            '<span class="column_type">longtext</span>',
+            '<span class="column_type" dir="ltr">longtext</span>',
             $actual
         );
         $this->assertContains(
@@ -3087,4 +3095,3 @@ class PMA_InsertEditTest extends PHPUnit_Framework_TestCase
         );
     }
 }
-?>

@@ -491,14 +491,14 @@ function PMA_getNullifyCodeForNullColumn($column, $foreigners, $foreignData)
         }
     } elseif (/*overload*/mb_strstr($column['True_Type'], 'set')) {
         $nullify_code = '3';
-    } elseif ($foreigners
-        && $foreigner
+    } elseif (!empty($foreigners)
+        && !empty($foreigner)
         && $foreignData['foreign_link'] == false
     ) {
         // foreign key in a drop-down
         $nullify_code = '4';
-    } elseif ($foreigners
-        && $foreigner
+    } elseif (!empty($foreigners)
+        && !empty($foreigner)
         && $foreignData['foreign_link'] == true
     ) {
         // foreign key with a browsing icon
@@ -2612,7 +2612,7 @@ function PMA_getHtmlForFunctionOption($odd_row, $column, $column_name_appendix)
 function PMA_getHtmlForInsertEditColumnType($column)
 {
     return '<td class="center' . $column['wrap'] . '">'
-        . '<span class="column_type">' . $column['pma_type'] . '</span>'
+        . '<span class="column_type" dir="ltr">' . $column['pma_type'] . '</span>'
         . '</td>';
 
 }
@@ -2963,4 +2963,3 @@ function PMA_userHasColumnPrivileges($table_column, $insert_mode)
         || (! $insert_mode && strstr($privileges, 'update') !== false)
         || is_null($privileges); // Drizzle
 }
-?>

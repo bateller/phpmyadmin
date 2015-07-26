@@ -579,6 +579,28 @@ $GLOBALS['dummy_queries'] = array(
     array(
         'query' => "SELECT * FROM `mysql`.`procs_priv` LIMIT 1",
         'result' => array()
+    ),
+    array(
+        'query' => 'DELETE FROM `mysql`.`db` WHERE `host` = "" '
+            . 'AND `Db` = "" AND `User` = "" LIMIT 1',
+        'result' => true
+    ),
+    array(
+        'query' => 'DELETE FROM `mysql`.`columns_priv` WHERE '
+            . '`host` = "" AND `Db` = "" AND `User` = "" LIMIT 1',
+        'result' => true
+    ),
+    array(
+        'query' => 'DELETE FROM `mysql`.`tables_priv` WHERE '
+            . '`host` = "" AND `Db` = "" AND `User` = "" AND Table_name = "" '
+            . 'LIMIT 1',
+        'result' => true
+    ),
+    array(
+        'query' => 'DELETE FROM `mysql`.`procs_priv` WHERE '
+            . '`host` = "" AND `Db` = "" AND `User` = "" AND `Routine_name` = "" '
+            . 'AND `Routine_type` = "" LIMIT 1',
+        'result' => true
     )
 );
 /**
@@ -676,7 +698,7 @@ class PMA_DBI_Dummy implements PMA_DBI_Extension
      * @param resource $link  connection object
      * @param string   $query multi query statement to execute
      *
-     * @return result collection | boolean(false)
+     * @return array|bool
      */
     public function realMultiQuery($link, $query)
     {
@@ -966,4 +988,3 @@ class PMA_DBI_Dummy implements PMA_DBI_Extension
         return '';
     }
 }
-?>

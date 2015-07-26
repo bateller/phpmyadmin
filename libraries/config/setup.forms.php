@@ -162,6 +162,7 @@ $forms['Sql_queries']['Sql_queries'] = array(
     'MaxCharactersInDisplayedSQL',
     'RetainQueryBox',
     'CodemirrorEnable',
+    'LintEnable',
     'EnableAutocompleteForTablesAndColumns',
     'DefaultForeignKeyChecks');
 $forms['Sql_queries']['Sql_box'] = array('SQLQuery' => array(
@@ -295,7 +296,7 @@ $forms['Export']['Export_defaults'] = array('Export' => array(
         'compression',
         'charset',
         'lock_tables',
-		'as_separate_files',
+        'as_separate_files',
         'asfile' => ':group',
             'onserver',
             'onserver_overwrite',
@@ -398,4 +399,3 @@ $forms['Export']['Texy'] = array('Export' => array(
     ':group:' . __('Data'),
         'texytext_null',
         'texytext_columns'));
-?>

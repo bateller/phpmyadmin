@@ -21,6 +21,11 @@ require_once 'libraries/gis/GIS_Visualization.class.php';
 require_once 'libraries/gis/GIS_Factory.class.php';
 require_once 'libraries/Message.class.php';
 
+/**
+ * Class TableGisVisualizationController
+ *
+ * @package PMA\Controllers\Table
+ */
 class TableGisVisualizationController extends TableController
 {
 
@@ -44,7 +49,22 @@ class TableGisVisualizationController extends TableController
      */
     protected $visualization;
 
-    public function __construct($sql_query, $url_params, $goto, $back, $visualizationSettings) {
+    /**
+     * Constructor
+     *
+     * @param string $sql_query             SQL query for retrieving GIS data
+     * @param array  $url_params            array of URL parameters
+     * @param string $goto                  goto script
+     * @param string $back                  back script
+     * @param array  $visualizationSettings visualization settings
+     */
+    public function __construct(
+        $sql_query,
+        $url_params,
+        $goto,
+        $back,
+        $visualizationSettings
+    ) {
         parent::__construct();
 
         $this->sql_query = $sql_query;
@@ -54,14 +74,26 @@ class TableGisVisualizationController extends TableController
         $this->visualizationSettings = $visualizationSettings;
     }
 
-    public function saveToFileAction() {
+    /**
+     * Save to file
+     *
+     * @return void
+     */
+    public function saveToFileAction()
+    {
         $this->response->disable();
         $file_name = $this->visualizationSettings['spatialColumn'];
         $save_format = $_REQUEST['fileFormat'];
         $this->visualization->toFile($file_name, $save_format);
     }
 
-    public function indexAction() {
+    /**
+     * Index
+     *
+     * @return void
+     */
+    public function indexAction()
+    {
         // Throw error if no sql query is set
         if (! isset($this->sql_query) || $this->sql_query == '') {
             $this->response->isSuccess(false);
@@ -125,18 +157,19 @@ class TableGisVisualizationController extends TableController
         }
 
         $this->response->getHeader()->getScripts()->addFiles(
-          array(
-              'openlayers/OpenLayers.js',
-              'jquery/jquery.svg.js',
-              'tbl_gis_visualization.js',
-              'OpenStreetMap.js'
-          )
+            array(
+                'openlayers/OpenLayers.js',
+                'jquery/jquery.svg.js',
+                'tbl_gis_visualization.js',
+                'OpenStreetMap.js'
+            )
         );
 
         // If all the rows contain SRID, use OpenStreetMaps on the initial loading.
         if (! isset($_REQUEST['displayVisualization'])) {
-            if ($this->visualization->hasSrid())
+            if ($this->visualization->hasSrid()) {
                 unset($this->visualizationSettings['choice']);
+            }
             $this->visualizationSettings['choice'] = 'useBaseLayer';
         }
 

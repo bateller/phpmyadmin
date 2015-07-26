@@ -16,6 +16,7 @@ if (! defined('PMA_MINIMUM_COMMON') && ! defined('TESTSUITE')) {
 
 .CodeMirror {
     height: <?php echo ceil($GLOBALS['cfg']['TextareaRows'] * 1.2); ?>em;
+    direction: ltr;
 }
 #inline_editor_outer .CodeMirror {
     height: <?php echo ceil($GLOBALS['cfg']['TextareaRows'] * 0.4); ?>em;
@@ -24,6 +25,10 @@ if (! defined('PMA_MINIMUM_COMMON') && ! defined('TESTSUITE')) {
     height: <?php echo ceil($GLOBALS['cfg']['TextareaRows'] * 0.6); ?>em;
     width: <?php echo ceil($GLOBALS['cfg']['TextareaCols'] * 0.6); ?>em;
     border: 1px solid #a9a9a9;
+}
+#pma_console .CodeMirror-gutters {
+    background-color: initial;
+    border: none;
 }
 span.cm-keyword, span.cm-statement-verb {
     color: #909;

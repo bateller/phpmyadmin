@@ -203,9 +203,7 @@ function PMA_relationsCleanupDatabase($db)
         PMA_queryAsControlUser($remove_query);
     }
 
-    if (isset($cfgRelation['centralcolumnswork'])
-        && $cfgRelation['centralcolumnswork']
-    ) {
+    if ($cfgRelation['centralcolumnswork']) {
         $remove_query = 'DELETE FROM ' . PMA_Util::backquote($cfgRelation['db'])
             . '.' . PMA_Util::backquote($cfgRelation['central_columns'])
             . ' WHERE db_name  = \'' . PMA_Util::sqlAddSlashes($db) . '\'';
@@ -217,6 +215,8 @@ function PMA_relationsCleanupDatabase($db)
  * Cleanup user related relation stuff
  *
  * @param string $username username
+ *
+ * @return void
  */
 function PMA_relationsCleanupUser($username)
 {
@@ -293,4 +293,3 @@ function PMA_relationsCleanupUser($username)
     }
 }
 
-?>

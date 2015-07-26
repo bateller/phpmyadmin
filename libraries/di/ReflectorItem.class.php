@@ -10,41 +10,46 @@ namespace PMA\DI;
 
 require_once 'libraries/di/Item.int.php';
 
+/**
+ * Reflector manager
+ *
+ * @package PMA\DI
+ */
 abstract class ReflectorItem implements Item
 {
 
     /** @var Container */
-    private $container;
+    private $_container;
 
     /** @var \Reflector */
-    private $reflector;
+    private $_reflector;
 
     /**
      * Constructor
      *
-     * @param Container $container
-     * @param mixed $definition
+     * @param Container $container  Container
+     * @param mixed     $definition Definition
      */
     public function __construct(Container $container, $definition)
     {
-        $this->container = $container;
-        $this->reflector = self::resolveReflector($definition);
+        $this->_container = $container;
+        $this->_reflector = self::_resolveReflector($definition);
     }
 
     /**
      * Invoke the reflector with given parameters
      *
-     * @param array $params
+     * @param array $params Parameters
      * @return mixed
      */
     protected function invoke($params = array())
     {
         $args = array();
-        $reflector = $this->reflector;
+        $reflector = $this->_reflector;
         if ($reflector instanceof \ReflectionClass) {
             $constructor = $reflector->getConstructor();
             if (isset($constructor)) {
-                $args = $this->resolveArgs(
+                $args = $this->_resolveArgs(
                     $constructor->getParameters(),
                     $params
                 );
@@ -52,7 +57,7 @@ abstract class ReflectorItem implements Item
             return $reflector->newInstanceArgs($args);
         }
         /** @var \ReflectionFunctionAbstract $reflector */
-        $args = $this->resolveArgs(
+        $args = $this->_resolveArgs(
             $reflector->getParameters(),
             $params
         );
@@ -67,11 +72,12 @@ abstract class ReflectorItem implements Item
     /**
      * Getting required arguments with given parameters
      *
-     * @param \ReflectionParameter[] $required
-     * @param array $params
-     * @return array
+     * @param \ReflectionParameter[] $required Arguments
+     * @param array                  $params   Parameters
+     *
+*@return array
      */
-    private function resolveArgs($required, $params = array())
+    private function _resolveArgs($required, $params = array())
     {
         $args = array();
         foreach ($required as $param) {
@@ -85,11 +91,11 @@ abstract class ReflectorItem implements Item
             } elseif (is_string($type) && isset($params[$type])) {
                 $args[] = $params[$type];
             } else {
-                $content = $this->container->get($name);
+                $content = $this->_container->get($name);
                 if (isset($content)) {
                     $args[] = $content;
                 } elseif (is_string($type)) {
-                    $args[] = $this->container->get($type);
+                    $args[] = $this->_container->get($type);
                 } else {
                     $args[] = null;
                 }
@@ -101,10 +107,11 @@ abstract class ReflectorItem implements Item
     /**
      * Resolve the reflection
      *
-     * @param mixed $definition
+     * @param mixed $definition Definition
+     *
      * @return \Reflector
      */
-    private static function resolveReflector($definition)
+    private static function _resolveReflector($definition)
     {
         if (function_exists($definition)) {
             return new \ReflectionFunction($definition);

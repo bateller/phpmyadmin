@@ -597,7 +597,8 @@ function PMA_exportDatabase(
     $db_alias = !empty($aliases[$db]['alias'])
         ? $aliases[$db]['alias'] : '';
 
-    // If single file, add DB header and Create but don't store in $dump_buffer_objects
+    // If single file, add DB header and Create but don't store in
+    // $dump_buffer_objects
     if (! $separate_files == 'database') {
         if (! $export_plugin->exportDBHeader($db, $db_alias)) {
             return;
@@ -637,9 +638,10 @@ function PMA_exportDatabase(
     $views = array();
 
     foreach ($tables as $table) {
+        $_table = new PMA_Table($table, $db);
         // if this is a view, collect it for later;
         // views must be exported after the tables
-        $is_view = PMA_Table::isView($db, $table);
+        $is_view = $_table->isView();
         if ($is_view) {
             $views[] = $table;
         }
@@ -650,16 +652,15 @@ function PMA_exportDatabase(
             // for a view, export a stand-in definition of the table
             // to resolve view dependencies (only when it's a single-file export)
             if ($is_view) {
-                if ($separate_files == '') {
-                    if (isset($GLOBALS['sql_create_view'])) {
-                        if (! $export_plugin->exportStructure(
-                            $db, $table, $crlf, $err_url, 'stand_in',
-                            $export_type, $do_relation, $do_comments,
-                            $do_mime, $do_dates, $aliases
-                        )) {
-                            break;
-                        }
-                    }
+                if ($separate_files == ''
+                    && isset($GLOBALS['sql_create_view'])
+                    && ! $export_plugin->exportStructure(
+                        $db, $table, $crlf, $err_url, 'stand_in',
+                        $export_type, $do_relation, $do_comments,
+                        $do_mime, $do_dates, $aliases
+                    )
+                ) {
+                    break;
                 }
             } else if (isset($GLOBALS['sql_create_table'])) {
 
@@ -696,7 +697,7 @@ function PMA_exportDatabase(
         if (($whatStrucOrData == 'data'
             || $whatStrucOrData == 'structure_and_data')
             && in_array($table, $table_data)
-            && ! ($is_view || PMA_Table::isMerge($db, $table))
+            && ! ($is_view || $_table->isMerge())
         ) {
             $local_query  = 'SELECT * FROM ' . PMA_Util::backquote($db)
                 . '.' . PMA_Util::backquote($table);
@@ -732,7 +733,7 @@ function PMA_exportDatabase(
     }
 
     if ($separate_files == 'database') {
-        if (! $export_plugin->exportDBFooter($db, $db_alias)) {
+        if (! $export_plugin->exportDBFooter($db)) {
             return;
         }
         PMA_saveObjectInBuffer('extra', true);
@@ -771,7 +772,7 @@ function PMA_exportDatabase(
     }
 
     if ($separate_files != 'database') {
-        if (! $export_plugin->exportDBFooter($db, $db_alias)) {
+        if (! $export_plugin->exportDBFooter($db)) {
             return;
         }
     }
@@ -821,7 +822,8 @@ function PMA_exportTable(
         $add_query  = '';
     }
 
-    $is_view = PMA_Table::isView($db, $table);
+    $_table = new PMA_Table($table, $db);
+    $is_view = $_table->isView();
     if ($whatStrucOrData == 'structure'
         || $whatStrucOrData == 'structure_and_data'
     ) {
@@ -854,9 +856,10 @@ function PMA_exportTable(
     // If this is an export of a single view, we have to export data;
     // for example, a PDF report
     // if it is a merge table, no data is exported
+    $table = new PMA_Table($table, $db);
     if (($whatStrucOrData == 'data'
         || $whatStrucOrData == 'structure_and_data')
-        && ! PMA_Table::isMerge($db, $table)
+        && ! $table->isMerge()
     ) {
         if (! empty($sql_query)) {
             // only preg_replace if needed
@@ -889,7 +892,7 @@ function PMA_exportTable(
             return;
         }
     }
-    if (! $export_plugin->exportDBFooter($db, $db_alias)) {
+    if (! $export_plugin->exportDBFooter($db)) {
         return;
     }
 
@@ -1012,7 +1015,7 @@ function PMA_unlockTables()
 }
 
 /**
- * Returns the all the metadata types the can be exported with a database or a table
+ * Returns all the metadata types that can be exported with a database or a table
  *
  * @return array metadata types.
  */
@@ -1031,4 +1034,20 @@ function PMA_getMetadataTypesToExport()
         'export_templates',
     );
 }
-?>
+
+/**
+ * Returns the checked clause, depending on the presence of key in array
+ *
+ * @param array  $array array to verify
+ * @param string $key   the key to look for
+ *
+ * @return string the checked clause
+ */
+function PMA_getCheckedClause($array, $key)
+{
+    if (in_array($array, $key)) {
+        return ' checked="checked"';
+    } else {
+        return '';
+    }
+}

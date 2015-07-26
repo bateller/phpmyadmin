@@ -122,11 +122,6 @@ abstract class Statement
              */
             $type = $clause[1];
 
-            // Checking if there is any parser (builder) for this clause.
-            if (empty(Parser::$KEYWORD_PARSERS[$name])) {
-                continue;
-            }
-
             /**
              * The builder (parser) of this clause.
              * @var string $class
@@ -169,6 +164,16 @@ abstract class Statement
      */
     public function parse(Parser $parser, TokensList $list)
     {
+        /**
+         * Whether the beginning of this statement was previously parsed.
+         *
+         * This is used to delimit statements that don't use the usual
+         * delimiters.
+         *
+         * @var bool
+         */
+        $parsedBeginning = false;
+
         // This may be corrected by the parser.
         $this->first = $list->idx;
 
@@ -178,7 +183,7 @@ abstract class Statement
          * default.
          * @var bool $parsedOptions
          */
-        $parsedOptions = !empty(static::$OPTIONS) ? false : true;
+        $parsedOptions = empty(static::$OPTIONS);
 
         for (; $list->idx < $list->count; ++$list->idx) {
             /**
@@ -195,6 +200,11 @@ abstract class Statement
             // Only keywords are relevant here. Other parts of the query are
             // processed in the functions below.
             if ($token->type !== Token::TYPE_KEYWORD) {
+                if (($token->type !== TOKEN::TYPE_COMMENT)
+                    && ($token->type !== Token::TYPE_WHITESPACE)
+                ) {
+                    $parser->error(__('Unexpected token.'), $token);
+                }
                 continue;
             }
 
@@ -231,8 +241,21 @@ abstract class Statement
             }
 
             if (!empty(Parser::$STATEMENT_PARSERS[$token->value])) {
+                if ($parsedBeginning) {
+                    // New statement has started. We let the parser construct a
+                    // new statement and parse that one
+                    $parser->error(
+                        __('A new statement was found, but no delimiter between them.'),
+                        $token
+                    );
+                    break;
+                }
+                $parsedBeginning = true;
                 if (!$parsedOptions) {
-                    ++$list->idx; // Skipping keyword.
+                    if (empty(static::$OPTIONS[$token->value])) {
+                        // Skipping keyword because if it is not a option.
+                        ++$list->idx;
+                    }
                     $this->options = OptionsArray::parse(
                         $parser,
                         $list,
@@ -243,10 +266,7 @@ abstract class Statement
             } elseif ($class === null) {
                 // There is no parser for this keyword and isn't the beginning
                 // of a statement (so no options) either.
-                $parser->error(
-                    'Unrecognized keyword "' . $token->value . '".',
-                    $token
-                );
+                $parser->error(__('Unrecognized keyword.'), $token);
                 continue;
             }
 
@@ -254,7 +274,7 @@ abstract class Statement
 
             // Parsing this keyword.
             if ($class !== null) {
-                ++$list->idx; // Skipping keyword.
+                ++$list->idx; // Skipping keyword or last option.
                 $this->$field = $class::parse($parser, $list, $options);
             }
 
@@ -300,8 +320,8 @@ abstract class Statement
      *
      * @return string
      */
-    public function __toString() 
+    public function __toString()
     {
-        return static::build($this);
+        return $this->build();
     }
 }

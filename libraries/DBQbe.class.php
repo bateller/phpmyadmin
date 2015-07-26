@@ -1148,7 +1148,7 @@ class PMA_DbQbe
                 $select_clauses[] = $select;
             }
         } // end for
-        if ($select_clauses) {
+        if (!empty($select_clauses)) {
             $select_clause = 'SELECT '
                 . htmlspecialchars(implode(", ", $select_clauses)) . "\n";
         }
@@ -1263,7 +1263,7 @@ class PMA_DbQbe
         $field = $this->_curField;
         $sort = $this->_curSort;
         $sortOrder = $this->_curSortOrder;
-        if ($sortOrder
+        if (!empty($sortOrder)
             && count($sortOrder) == count($sort)
             && count($sortOrder) == count($field)
         ) {
@@ -1294,7 +1294,7 @@ class PMA_DbQbe
                     . $sort[$column_index];
             }
         } // end for
-        if ($orderby_clauses) {
+        if (!empty($orderby_clauses)) {
             $orderby_clause = 'ORDER BY '
                 . htmlspecialchars(implode(", ", $orderby_clauses)) . "\n";
         }
@@ -1471,11 +1471,8 @@ class PMA_DbQbe
         $csize = array();
         foreach ($candidate_columns as $table) {
             if ($checked_tables[$table] != 1) {
-                $tsize[$table] = PMA_Table::countRecords(
-                    $this->_db,
-                    $table,
-                    false
-                );
+                $_table = new PMA_Table($table, $this->_db);
+                $tsize[$table] = $_table->countRecords();
                 $checked_tables[$table] = 1;
             }
             $csize[$table] = $tsize[$table];
@@ -1535,32 +1532,40 @@ class PMA_DbQbe
     private function _getFromClause()
     {
         $from_clause = '';
-        if (isset($_POST['criteriaColumn']) && count($_POST['criteriaColumn']) > 0) {
-            // Initialize some variables
-            $search_tables = $search_columns = array();
+        if (!isset($_POST['criteriaColumn'])
+            || count($_POST['criteriaColumn']) <= 0
+        ) {
+            return $from_clause;
+        }
 
-            // We only start this if we have fields, otherwise it would be dumb
-            foreach ($_POST['criteriaColumn'] as $value) {
-                $parts = explode('.', $value);
-                if (! empty($parts[0]) && ! empty($parts[1])) {
-                    $table = str_replace('`', '', $parts[0]);
-                    $search_tables[$table] = $table;
-                    $search_columns[] = $table . '.' . str_replace('`', '', $parts[1]);
-                }
-            } // end while
+        // Initialize some variables
+        $search_tables = $search_columns = array();
 
-            // Create LEFT JOINS out of Relations
-            $from_clause = $this->_getJoinForFromClause($search_tables, $search_columns);
-
-            // In case relations are not defined, just generate the FROM clause
-            // from the list of tables, however we don't generate any JOIN
-            if (empty($from_clause)) {
-                // Create cartesian product
-                $from_clause = implode(
-                    ", ", array_map('PMA_Util::backquote', $search_tables)
+        // We only start this if we have fields, otherwise it would be dumb
+        foreach ($_POST['criteriaColumn'] as $value) {
+            $parts = explode('.', $value);
+            if (! empty($parts[0]) && ! empty($parts[1])) {
+                $table = str_replace('`', '', $parts[0]);
+                $search_tables[$table] = $table;
+                $search_columns[] = $table . '.' . str_replace(
+                    '`', '', $parts[1]
                 );
             }
-        } // end count($_POST['criteriaColumn']) > 0
+        } // end while
+
+        // Create LEFT JOINS out of Relations
+        $from_clause = $this->_getJoinForFromClause(
+            $search_tables, $search_columns
+        );
+
+        // In case relations are not defined, just generate the FROM clause
+        // from the list of tables, however we don't generate any JOIN
+        if (empty($from_clause)) {
+            // Create cartesian product
+            $from_clause = implode(
+                ", ", array_map('PMA_Util::backquote', $search_tables)
+            );
+        }
 
         return $from_clause;
     }
@@ -1622,36 +1627,38 @@ class PMA_DbQbe
                     foreach ($columnReferences as $reference) {
 
                         // Only from this schema
-                        if ($reference['table_schema'] == $this->_db) {
-                            $table = $reference['table_name'];
+                        if ($reference['table_schema'] != $this->_db) {
+                            continue;
+                        }
 
-                            $this->_loadRelationsForTable($relations, $table);
+                        $table = $reference['table_name'];
 
-                            // Make copies
-                            $tempFinalized = $finalized;
-                            $tempSearchTables = $searchTables;
-                            $tempSearchTables[] = $table;
+                        $this->_loadRelationsForTable($relations, $table);
 
-                            // Try joining with the added table
-                            $this->_fillJoinClauses(
-                                $tempFinalized, $relations, $tempSearchTables
-                            );
+                        // Make copies
+                        $tempFinalized = $finalized;
+                        $tempSearchTables = $searchTables;
+                        $tempSearchTables[] = $table;
 
-                            $tempUnfinalized = array_diff(
-                                $tempSearchTables, array_keys($tempFinalized)
-                            );
-                            // Take greedy approach.
-                            // If the unfinalized count drops we keep the new table
-                            // and switch temporary varibles with the original ones
-                            if (count($tempUnfinalized) < count($unfinalized)) {
-                                $finalized = $tempFinalized;
-                                $searchTables = $tempSearchTables;
-                            }
+                        // Try joining with the added table
+                        $this->_fillJoinClauses(
+                            $tempFinalized, $relations, $tempSearchTables
+                        );
 
-                            // We are done if no unfinalized tables anymore
-                            if (count($tempUnfinalized) == 0) {
-                                break 3;
-                            }
+                        $tempUnfinalized = array_diff(
+                            $tempSearchTables, array_keys($tempFinalized)
+                        );
+                        // Take greedy approach.
+                        // If the unfinalized count drops we keep the new table
+                        // and switch temporary varibles with the original ones
+                        if (count($tempUnfinalized) < count($unfinalized)) {
+                            $finalized = $tempFinalized;
+                            $searchTables = $tempSearchTables;
+                        }
+
+                        // We are done if no unfinalized tables anymore
+                        if (count($tempUnfinalized) == 0) {
+                            break 3;
                         }
                     }
                 }
@@ -1689,8 +1696,8 @@ class PMA_DbQbe
     /**
      * Loads relations for a given table into the $relations array
      *
-     * @param array  $relations array of relations
-     * @param string $oneTable  the table
+     * @param array  &$relations array of relations
+     * @param string $oneTable   the table
      *
      * @return void
      */
@@ -1729,7 +1736,7 @@ class PMA_DbQbe
     /**
      * Fills the $finalized arrays with JOIN clauses for each of the tables
      *
-     * @param array $finalized    JOIN clauses for each table
+     * @param array &$finalized   JOIN clauses for each table
      * @param array $relations    Relations among tables
      * @param array $searchTables Tables involved in the search
      *
@@ -1966,4 +1973,3 @@ class PMA_DbQbe
         }
     }
 }
-?>

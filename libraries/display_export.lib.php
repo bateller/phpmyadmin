@@ -37,7 +37,7 @@ function PMA_exportCheckboxCheck($str)
  */
 function PMA_getHtmlForExportSelectOptions($tmp_select = '')
 {
-    $multi_values  = '<div style="text-align: left">';
+    $multi_values  = '<div>';
     $multi_values .= '<a href="#"';
     $multi_values .= ' onclick="setSelectOptions'
         . '(\'dump\', \'db_select[]\', true); return false;">';
@@ -220,7 +220,7 @@ function PMA_getHtmlForExportTemplateLoading($export_type)
     $html .= '<h4>' . __('Existing templates:') . '</h4>';
     $html .= '<label for="template">' . __('Template:') . '</label>';
     $html .= '<select required="required" name="template" id="template">';
-    $html .= PMA_getOptionsForexport_templates($export_type);
+    $html .= PMA_getOptionsForExportTemplates($export_type);
     $html .= '</select>';
     $html .= '<input type="submit" name="updateTemplate" '
         . 'id="updateTemplate" value="' . __('Update') . '" />';
@@ -243,7 +243,7 @@ function PMA_getHtmlForExportTemplateLoading($export_type)
  *
  * @return string HTML for the options in teplate dropdown
  */
-function PMA_getOptionsForexport_templates($export_type)
+function PMA_getOptionsForExportTemplates($export_type)
 {
     $ret = '<option value="">-- ' . __('Select a template') . ' --</option>';
 
@@ -441,7 +441,8 @@ function PMA_getHtmlForExportOptionsRows($db, $table, $unlim_num_rows)
     } elseif (!empty($unlim_num_rows)) {
         $html .= $unlim_num_rows;
     } else {
-        $html .= PMA_Table::countRecords($db, $table);
+        $_table = new PMA_Table($table, $db);
+        $html .= $_table->countRecords();
     }
     $html .= '" onfocus="this.select()" />';
     $html .= '</li>';
@@ -871,7 +872,8 @@ function PMA_getHtmlForExportOptions(
     $html .= PMA_getHtmlForExportOptionsSelection($export_type, $multi_values);
 
     $tableLength = /*overload*/mb_strlen($table);
-    if ($tableLength && empty($num_tables) && ! PMA_Table::isMerge($db, $table)) {
+    $_table = new PMA_Table($table, $db);
+    if ($tableLength && empty($num_tables) && ! $_table->isMerge()) {
         $html .= PMA_getHtmlForExportOptionsRows($db, $table, $unlim_num_rows);
     }
 
@@ -1022,4 +1024,3 @@ function PMA_getHtmlForAliasModalDialog($db = '', $table = '')
     $html .= '</div>';
     return $html;
 }
-?>

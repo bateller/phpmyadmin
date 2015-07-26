@@ -24,7 +24,7 @@ class PMA_GIS_Visualization
      */
     private $_data;
 
-    private $modified_sql;
+    private $_modified_sql;
 
     /**
      * @var array   Set of default settings values are here.
@@ -75,16 +75,42 @@ class PMA_GIS_Visualization
         return $this->_settings;
     }
 
+    /**
+     * Factory
+     *
+     * @param string  $sql_query SQL to fetch raw data for visualization
+     * @param array   $options   Users specified options
+     * @param integer $row       number of rows
+     * @param integer $pos       start position
+     *
+     * @return PMA_GIS_Visualization
+     *
+     * @access public
+     */
     public static function get($sql_query, $options, $row, $pos)
     {
         return new PMA_GIS_Visualization($sql_query, $options, $row, $pos);
     }
 
+    /**
+     * Get visualization
+     *
+     * @param array $data    Raw data, if set, parameters other than $options will be
+     *                       ignored
+     * @param array $options Users specified options
+     *
+     * @return PMA_GIS_Visualization
+     */
     public static function getByData($data, $options)
     {
         return new PMA_GIS_Visualization(null, $options, null, null, $data);
     }
 
+    /**
+     * Check if data as srid
+     *
+     * @return bool
+     */
     public function hasSrid()
     {
         foreach ($this->_data as $row) {
@@ -109,13 +135,11 @@ class PMA_GIS_Visualization
     private function __construct($sql_query, $options, $row, $pos, $data = null)
     {
         $this->_userSpecifiedSettings = $options;
-        if (isset($data))
-        {
+        if (isset($data)) {
             $this->_data = $data;
-        }
-        else {
-            $this->modified_sql = $this->modifySqlQuery($sql_query, $row, $pos);
-            $this->_data = $this->fetchRawData();
+        } else {
+            $this->_modified_sql = $this->_modifySqlQuery($sql_query, $row, $pos);
+            $this->_data = $this->_fetchRawData();
         }
 
     }
@@ -134,13 +158,13 @@ class PMA_GIS_Visualization
     /**
      * Returns sql for fetching raw data
      *
-     * @param string $sql_query The SQL to modify.
-     * @param integer $rows     Number of rows.
-     * @param integer $pos      Start posistion.
+     * @param string  $sql_query The SQL to modify.
+     * @param integer $rows      Number of rows.
+     * @param integer $pos       Start position.
      *
      * @return string the modified sql query.
      */
-    private function modifySqlQuery($sql_query, $rows, $pos)
+    private function _modifySqlQuery($sql_query, $rows, $pos)
     {
         $modified_query = 'SELECT ';
         // If label column is chosen add it to the query
@@ -181,9 +205,9 @@ class PMA_GIS_Visualization
      *
      * @return string the raw data.
      */
-    private function fetchRawData()
+    private function _fetchRawData()
     {
-        $modified_result = $GLOBALS['dbi']->tryQuery($this->modified_sql);
+        $modified_result = $GLOBALS['dbi']->tryQuery($this->_modified_sql);
 
         $data = array();
         while ($row = $GLOBALS['dbi']->fetchAssoc($modified_result)) {
@@ -452,7 +476,15 @@ class PMA_GIS_Visualization
         $pdf->Output($file_name, 'D');
     }
 
-    public function toImage($format) {
+    /**
+     * Convert file to image
+     *
+     * @param string $format Output format
+     *
+     * @return string File
+     */
+    public function toImage($format)
+    {
         if ($format == 'svg') {
             return $this->asSvg();
         } elseif ($format == 'png') {
@@ -462,7 +494,16 @@ class PMA_GIS_Visualization
         }
     }
 
-    public function toFile($filename, $format) {
+    /**
+     * Convert file to given format
+     *
+     * @param string $filename Filename
+     * @param string $format   Output format
+     *
+     * @return void
+     */
+    public function toFile($filename, $format)
+    {
         if ($format == 'svg') {
             $this->toFileAsSvg($filename);
         } elseif ($format == 'png') {
@@ -619,11 +660,14 @@ class PMA_GIS_Visualization
     }
 
     /**
-     * @param array $userSpecifiedSettings
+     * Set user specified settings
+     *
+     * @param array $userSpecifiedSettings User specified settings
+     *
+     * @return void
      */
     public function setUserSpecifiedSettings($userSpecifiedSettings)
     {
         $this->_userSpecifiedSettings = $userSpecifiedSettings;
     }
 }
-?>

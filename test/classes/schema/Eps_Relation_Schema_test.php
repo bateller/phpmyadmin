@@ -55,6 +55,7 @@ class PMA_Eps_Relation_Schema_Test extends PHPUnit_Framework_TestCase
 
         //_SESSION
         $_SESSION['relation'][$GLOBALS['server']] = array(
+            'PMA_VERSION' => PMA_VERSION,
             'table_coords' => "table_name",
             'displaywork' => 'displaywork',
             'db' => "information_schema",
@@ -185,7 +186,7 @@ class PMA_Eps_Relation_Schema_Test extends PHPUnit_Framework_TestCase
      *
      * @group medium
      */
-    public function testSetPageNumbere()
+    public function testSetPageNumber()
     {
         $this->object->setPageNumber(33);
         $this->assertEquals(

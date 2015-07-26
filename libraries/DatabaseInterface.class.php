@@ -12,6 +12,9 @@ if (! defined('PHPMYADMIN')) {
 require_once './libraries/logging.lib.php';
 require_once './libraries/Index.class.php';
 require_once './libraries/SystemDatabase.class.php';
+require_once './libraries/util.lib.php';
+
+use PMA\Util;
 
 /**
  * Main interface for database interactions
@@ -43,13 +46,19 @@ class PMA_DatabaseInterface
     private $_extension;
 
     /**
+     * @var array Table data cache
+     */
+    private $_table_cache;
+
+    /**
      * Constructor
      *
      * @param PMA_DBI_Extension $ext Object to be used for database queries
      */
-    function __construct($ext)
+    public function __construct($ext)
     {
         $this->_extension = $ext;
+        $this->_table_cache = array();
     }
 
     /**
@@ -87,6 +96,62 @@ class PMA_DatabaseInterface
         return $res;
     }
 
+    /**
+     * Get a cached value from table cache.
+     *
+     * @param string $contentPath Dot notation of the target value
+     * @param mixed  $default     Return value on cache miss
+     *
+     * @return mixed cached value or default
+     */
+    public function getCachedTableContent($contentPath, $default = null)
+    {
+        return Util\get($this->_table_cache, $contentPath, $default);
+    }
+
+    /**
+     * Set an item in table cache using dot notation.
+     *
+     * @param string $contentPath Dot notation of the target path
+     * @param mixed  $value       Target value
+     *
+     * @return void
+     */
+    public function cacheTableContent($contentPath, $value)
+    {
+        $loc = &$this->_table_cache;
+
+        if (!isset($contentPath)) {
+            $loc = $value;
+            return;
+        }
+
+        $keys = explode('.', $contentPath);
+
+        while (count($keys) > 1) {
+            $key = array_shift($keys);
+
+            // If the key doesn't exist at this depth, we will just create an empty array
+            // to hold the next value, allowing us to create the arrays to hold final
+            // values at the correct depth. Then we'll keep digging into the array.
+            if (!isset($loc[$key]) || !is_array($loc[$key])) {
+                $loc[$key] = array();
+            }
+            $loc = &$loc[$key];
+        }
+
+        $loc[array_shift($keys)] = $value;
+    }
+
+    /**
+     * Clear the table cache.
+     *
+     * @return void
+     */
+    public function clearTableCache()
+    {
+        $this->_table_cache = array();
+    }
 
     /**
      * Caches table data so PMA_Table does not require to issue
@@ -107,18 +172,18 @@ class PMA_DatabaseInterface
         //  we would lose a db name that consists only of numbers
 
         foreach ($tables as $one_database => $its_tables) {
-            if (isset(PMA_Table::$cache[$one_database])) {
+            if (isset($this->_table_cache[$one_database])) {
                 // the + operator does not do the intended effect
                 // when the cache for one table already exists
                 if ($table
-                    && isset(PMA_Table::$cache[$one_database][$table])
+                    && isset($this->_table_cache[$one_database][$table])
                 ) {
-                    unset(PMA_Table::$cache[$one_database][$table]);
+                    unset($this->_table_cache[$one_database][$table]);
                 }
-                PMA_Table::$cache[$one_database]
-                    = PMA_Table::$cache[$one_database] + $tables[$one_database];
+                $this->_table_cache[$one_database]
+                    = $this->_table_cache[$one_database] + $tables[$one_database];
             } else {
-                PMA_Table::$cache[$one_database] = $tables[$one_database];
+                $this->_table_cache[$one_database] = $tables[$one_database];
             }
         }
     }
@@ -188,7 +253,8 @@ class PMA_DatabaseInterface
             $time = microtime(true) - $time;
             $this->_dbgQuery($query, $link, $result, $time);
         }
-        if ($result != false && PMA_Tracker::isActive() == true ) {
+
+        if ((!empty($result)) && (PMA_Tracker::isActive())) {
             PMA_Tracker::handleQuery($query);
         }
 
@@ -476,7 +542,7 @@ class PMA_DatabaseInterface
 
         $tables = array();
 
-        if (! $GLOBALS['cfg']['Server']['DisableIS']) {
+        if (! isset($GLOBALS['cfg']['Server']['DisableIS']) || !$GLOBALS['cfg']['Server']['DisableIS']) {
             $sql_where_table = $this->_getTableCondition(
                 $table, $tbl_is_group, $table_type
             );
@@ -873,7 +939,8 @@ class PMA_DatabaseInterface
 
         foreach ($tables_full as $table=>$tmp) {
 
-            if (PMA_Table::isView($db, $table)) {
+            $_table = $this->getTable($db, $table);
+            if ($_table->isView()) {
                 $views[] = $table;
             }
 
@@ -1029,47 +1096,51 @@ class PMA_DatabaseInterface
                 $databases[$database_name]['DEFAULT_COLLATION_NAME']
                     = PMA_getDbCollation($database_name);
 
-                if ($force_stats) {
-
-                    // get additional info about tables
-                    $databases[$database_name]['SCHEMA_TABLES']          = 0;
-                    $databases[$database_name]['SCHEMA_TABLE_ROWS']      = 0;
-                    $databases[$database_name]['SCHEMA_DATA_LENGTH']     = 0;
-                    $databases[$database_name]['SCHEMA_MAX_DATA_LENGTH'] = 0;
-                    $databases[$database_name]['SCHEMA_INDEX_LENGTH']    = 0;
-                    $databases[$database_name]['SCHEMA_LENGTH']          = 0;
-                    $databases[$database_name]['SCHEMA_DATA_FREE']       = 0;
-
-                    $res = $this->query(
-                        'SHOW TABLE STATUS FROM '
-                        . PMA_Util::backquote($database_name) . ';'
-                    );
-
-                    if ($res !== false) {
-                        while ($row = $this->fetchAssoc($res)) {
-                            $databases[$database_name]['SCHEMA_TABLES']++;
-                            $databases[$database_name]['SCHEMA_TABLE_ROWS']
-                                += $row['Rows'];
-                            $databases[$database_name]['SCHEMA_DATA_LENGTH']
-                                += $row['Data_length'];
-                            $databases[$database_name]['SCHEMA_MAX_DATA_LENGTH']
-                                += $row['Max_data_length'];
-                            $databases[$database_name]['SCHEMA_INDEX_LENGTH']
-                                += $row['Index_length'];
-
-                            // for InnoDB, this does not contain the number of
-                            // overhead bytes but the total free space
-                            if ('InnoDB' != $row['Engine']) {
-                                $databases[$database_name]['SCHEMA_DATA_FREE']
-                                    += $row['Data_free'];
-                            }
-                            $databases[$database_name]['SCHEMA_LENGTH']
-                                += $row['Data_length'] + $row['Index_length'];
-                        }
-                        $this->freeResult($res);
-                    }
-                    unset($res);
+                if (!$force_stats) {
+                    continue;
                 }
+
+                // get additional info about tables
+                $databases[$database_name]['SCHEMA_TABLES']          = 0;
+                $databases[$database_name]['SCHEMA_TABLE_ROWS']      = 0;
+                $databases[$database_name]['SCHEMA_DATA_LENGTH']     = 0;
+                $databases[$database_name]['SCHEMA_MAX_DATA_LENGTH'] = 0;
+                $databases[$database_name]['SCHEMA_INDEX_LENGTH']    = 0;
+                $databases[$database_name]['SCHEMA_LENGTH']          = 0;
+                $databases[$database_name]['SCHEMA_DATA_FREE']       = 0;
+
+                $res = $this->query(
+                    'SHOW TABLE STATUS FROM '
+                    . PMA_Util::backquote($database_name) . ';'
+                );
+
+                if ($res === false) {
+                    unset($res);
+                    continue;
+                }
+
+                while ($row = $this->fetchAssoc($res)) {
+                    $databases[$database_name]['SCHEMA_TABLES']++;
+                    $databases[$database_name]['SCHEMA_TABLE_ROWS']
+                        += $row['Rows'];
+                    $databases[$database_name]['SCHEMA_DATA_LENGTH']
+                        += $row['Data_length'];
+                    $databases[$database_name]['SCHEMA_MAX_DATA_LENGTH']
+                        += $row['Max_data_length'];
+                    $databases[$database_name]['SCHEMA_INDEX_LENGTH']
+                        += $row['Index_length'];
+
+                    // for InnoDB, this does not contain the number of
+                    // overhead bytes but the total free space
+                    if ('InnoDB' != $row['Engine']) {
+                        $databases[$database_name]['SCHEMA_DATA_FREE']
+                            += $row['Data_free'];
+                    }
+                    $databases[$database_name]['SCHEMA_LENGTH']
+                        += $row['Data_length'] + $row['Index_length'];
+                }
+                $this->freeResult($res);
+                unset($res);
             }
         }
 
@@ -2219,7 +2290,7 @@ class PMA_DatabaseInterface
                     . " = '" . PMA_Util::sqlAddSlashes($name) . "'";
             }
             $result = $this->fetchResult($query);
-            if ($result) {
+            if (!empty($result)) {
                 $routines = $result;
             }
         } else {
@@ -2231,7 +2302,7 @@ class PMA_DatabaseInterface
                         . PMA_Util::sqlAddSlashes($name) . "'";
                 }
                 $result = $this->fetchResult($query);
-                if ($result) {
+                if (!empty($result)) {
                     $routines = array_merge($routines, $result);
                 }
             }
@@ -2243,7 +2314,7 @@ class PMA_DatabaseInterface
                         . PMA_Util::sqlAddSlashes($name) . "'";
                 }
                 $result = $this->fetchResult($query);
-                if ($result) {
+                if (!empty($result)) {
                     $routines = array_merge($routines, $result);
                 }
             }
@@ -2624,7 +2695,8 @@ class PMA_DatabaseInterface
     public function getSystemSchemas()
     {
         $schemas = array(
-            'information_schema', 'performance_schema', 'data_dictionary', 'mysql'
+            'information_schema', 'performance_schema', 'data_dictionary', 'mysql',
+            'sys'
         );
         $systemSchemas = array();
         foreach ($schemas as $schema) {
@@ -2647,16 +2719,12 @@ class PMA_DatabaseInterface
      */
     public function isSystemSchema($schema_name, $testForMysqlSchema = false)
     {
-        if (!defined("PMA_DRIZZLE")) {
-            define("PMA_DRIZZLE", false);
-        }
-
-        return strtolower($schema_name) == 'information_schema'
-            || (!PMA_DRIZZLE
-                && strtolower($schema_name) == 'performance_schema')
-            || (PMA_DRIZZLE
-                && strtolower($schema_name) == 'data_dictionary')
-            || ($testForMysqlSchema && !PMA_DRIZZLE && $schema_name == 'mysql');
+        $schema_name = strtolower($schema_name);
+        return $schema_name == 'information_schema'
+            || (!PMA_DRIZZLE && $schema_name == 'performance_schema')
+            || (!PMA_DRIZZLE && $schema_name == 'mysql' && $testForMysqlSchema)
+            || (!PMA_DRIZZLE && $schema_name == 'sys')
+            || ( PMA_DRIZZLE && $schema_name == 'data_dictionary');
     }
 
     /**
@@ -3133,4 +3201,3 @@ class PMA_DatabaseInterface
         return new PMA_Table($table_name, $db_name, $this);
     }
 }
-?>

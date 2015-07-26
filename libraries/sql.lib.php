@@ -10,54 +10,18 @@ if (!defined('PHPMYADMIN')) {
 }
 
 /**
- * Get the database name inside a query
+ * Parses and analyzes the given SQL query.
  *
- * @param string $sql       SQL query
- * @param array  $databases array with all databases
- *
- * @return string $db new database name
+ * @param string $sql_query
  */
-function PMA_getNewDatabase($sql, $databases)
+function PMA_parseAndAnalyze($sql_query, $db = null)
 {
-    $db = '';
-    // loop through all the databases
-    foreach ($databases as $database) {
-        if (/*overload*/mb_strpos($sql, $database['SCHEMA_NAME']) !== false
-        ) {
-            $db = $database['SCHEMA_NAME'];
-            break;
-        }
-    }
-    return $db;
-}
-
-/**
- * Get the table name in a sql query
- * If there are several tables in the SQL query,
- * first table will return
- *
- * @param string $sql    SQL query
- * @param array  $tables array of names in current database
- *
- * @return string $table table name
- */
-function PMA_getTableNameBySQL($sql, $tables)
-{
-    $table = '';
-
-    // loop through all the tables in the database
-    foreach ($tables as $tbl) {
-        if (/*overload*/mb_strpos($sql, $tbl)) {
-            $table .= ' ' . $tbl;
-        }
+    if (($db === null) && (!empty($GLOBALS['db']))) {
+        $db = $GLOBALS['db'];
     }
 
-    if (count(explode(' ', trim($table))) > 1) {
-        $tmp_array = explode(' ', trim($table));
-        return $tmp_array[0];
-    }
-
-    return trim($table);
+    // `$sql_query` is being used inside `parse_analyze.inc.php`.
+    return include 'libraries/parse_analyze.inc.php';
 }
 
 /**
@@ -123,33 +87,6 @@ function PMA_getSqlWithLimitClause(&$analyzed_sql_results)
         'LIMIT ' . $_SESSION['tmpval']['pos'] . ', '
         . $_SESSION['tmpval']['max_rows']
     );
-}
-
-
-/**
- * Get column name from a drop SQL statement
- *
- * @param string $sql SQL query
- *
- * @return string $drop_column Name of the column
- */
-function PMA_getColumnNameInColumnDropSql($sql)
-{
-    $tmpArray1 = explode('DROP', $sql);
-    $str_to_check = trim($tmpArray1[1]);
-
-    if (/*overload*/mb_stripos($str_to_check, 'COLUMN') !== false) {
-        $tmpArray2 = explode('COLUMN', $str_to_check);
-        $str_to_check = trim($tmpArray2[1]);
-    }
-
-    $tmpArray3 = explode(' ', $str_to_check);
-    $str_to_check = trim($tmpArray3[0]);
-
-    $drop_column = str_replace(';', '', trim($str_to_check));
-    $drop_column = str_replace('`', '', $drop_column);
-
-    return $drop_column;
 }
 
 /**
@@ -280,7 +217,7 @@ function PMA_getHtmlForProfilingChart($url_query, $db, $profiling_results)
         $profiling_table = '';
         $profiling_table .= '<fieldset><legend>' . __('Profiling')
             . '</legend>' . "\n";
-        $profiling_table .= '<div style="float: left;">';
+        $profiling_table .= '<div class="floatleft">';
         $profiling_table .= '<h3>' . __('Detailed profile') . '</h3>';
         $profiling_table .= '<table id="profiletable"><thead>' . "\n";
         $profiling_table .= ' <tr>' . "\n";
@@ -298,7 +235,7 @@ function PMA_getHtmlForProfilingChart($url_query, $db, $profiling_results)
         $profiling_table .= '</tbody></table>' . "\n";
         $profiling_table .= '</div>';
 
-        $profiling_table .= '<div style="float: left; margin-left:10px;">';
+        $profiling_table .= '<div class="floatleft">';
         $profiling_table .= '<h3>' . __('Summary by state') . '</h3>';
         $profiling_table .= '<table id="profilesummarytable"><thead>' . "\n";
         $profiling_table .= ' <tr>' . "\n";
@@ -665,7 +602,8 @@ function PMA_isJustBrowsing($analyzed_sql_results, $find_real_end)
         && ! $analyzed_sql_results['is_func']
         && empty($analyzed_sql_results['union'])
         && empty($analyzed_sql_results['distinct'])
-        && count($analyzed_sql_results['select_tables'] <= 1)
+        && $analyzed_sql_results['select_from']
+        && (count($analyzed_sql_results['select_tables']) <= 1)
         && (empty($analyzed_sql_results['statement']->where)
             || (count($analyzed_sql_results['statement']->where) == 1
                 && $analyzed_sql_results['statement']->where[0]->expr ==='1'))
@@ -703,16 +641,10 @@ function PMA_isDeleteTransformationInfo($analyzed_sql_results)
 function PMA_hasNoRightsToDropDatabase($analyzed_sql_results,
     $allowUserDropDatabase, $is_superuser
 ) {
-    if (! defined('PMA_CHK_DROP')
+    return ! defined('PMA_CHK_DROP')
         && ! $allowUserDropDatabase
-        && isset ($analyzed_sql_results['drop_database'])
-        && $analyzed_sql_results['drop_database'] == 1
-        && ! $is_superuser
-    ) {
-        return true;
-    } else {
-        return false;
-    }
+        && $analyzed_sql_results['drop_database']
+        && ! $is_superuser;
 }
 
 /**
@@ -829,7 +761,7 @@ function PMA_addBookmark($pmaAbsoluteUri, $goto)
  */
 function PMA_findRealEndOfRows($db, $table)
 {
-    $unlim_num_rows = PMA_Table::countRecords($db, $table, true);
+    $unlim_num_rows = $GLOBALS['dbi']->getTable($db, $table)->countRecords(true);
     $_SESSION['tmpval']['pos'] = PMA_getStartPosToDisplayRow($unlim_num_rows);
 
     return $unlim_num_rows;
@@ -1152,11 +1084,7 @@ function PMA_countQueryResults(
         // due to $find_real_end == true
         if ($justBrowsing) {
             // Get row count (is approximate for InnoDB)
-            $unlim_num_rows = PMA_Table::countRecords(
-                $db,
-                $table,
-                false
-            );
+            $unlim_num_rows = $GLOBALS['dbi']->getTable($db, $table)->countRecords();
             /**
              * @todo Can we know at this point that this is InnoDB,
              *       (in this case there would be no need for getting
@@ -1169,11 +1097,8 @@ function PMA_countQueryResults(
                  * @todo In countRecords(), MaxExactCount is also verified,
                  *       so can we avoid checking it twice?
                  */
-                $unlim_num_rows = PMA_Table::countRecords(
-                    $db,
-                    $table,
-                    true
-                );
+                $unlim_num_rows = $GLOBALS['dbi']->getTable($db, $table)
+                    ->countRecords(true);
             }
 
         } else {
@@ -1772,7 +1697,7 @@ function PMA_getHtmlForIndexesProblems($query_type, $selectedTables, $db)
 /**
  * Function to display results when the executed query returns non empty results
  *
- * @param array              $result               executed query results
+ * @param object             $result               executed query results
  * @param array              $analyzed_sql_results analysed sql results
  * @param string             $db                   current database
  * @param string             $table                current table
@@ -1833,7 +1758,8 @@ function PMA_getQueryResponseForResultsReturned($result, $analyzed_sql_results,
     if ($statement instanceof SqlParser\Statements\SelectStatement) {
         if (!empty($statement->expr)) {
             if ($statement->expr[0]->expr === '*') {
-                $updatableView = PMA_Table::isUpdatableView($db, $table);
+                $_table = new PMA_Table($table, $db);
+                $updatableView = $_table->isUpdatableView();
             }
         }
     }
@@ -2112,7 +2038,9 @@ function PMA_executeQueryAndGetQueryResponse($analyzed_sql_results,
         );
 
     // No rows returned -> move back to the calling page
-    if ((0 == $num_rows && 0 == $unlim_num_rows) || $analyzed_sql_results['is_affected']) {
+    if ((0 == $num_rows && 0 == $unlim_num_rows)
+        || $analyzed_sql_results['is_affected']
+    ) {
         $html_output = PMA_getQueryResponseForNoResultsReturned(
             $analyzed_sql_results, $db, $table,
             isset($message_to_show) ? $message_to_show : null,
@@ -2180,7 +2108,8 @@ function PMA_calculatePosForLastPage($db, $table, $pos)
         $pos = $_SESSION['tmpval']['pos'];
     }
 
-    $unlim_num_rows = PMA_Table::countRecords($db, $table, true);
+    $_table = new PMA_Table($table, $db);
+    $unlim_num_rows = $_table->countRecords(true);
     //If position is higher than number of rows
     if ($unlim_num_rows <= $pos && 0 != $pos) {
         $pos = PMA_getStartPosToDisplayRow($unlim_num_rows);
@@ -2189,4 +2118,3 @@ function PMA_calculatePosForLastPage($db, $table, $pos)
     return $pos;
 }
 
-?>

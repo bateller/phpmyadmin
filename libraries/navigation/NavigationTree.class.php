@@ -1168,7 +1168,7 @@ class PMA_NavigationTree
 
         if ($recursive) {
             $hide = '';
-            if ($node->visible == false) {
+            if (!$node->visible) {
                 $hide = " style='display: none;'";
             }
             $children = $node->children;
@@ -1512,4 +1512,3 @@ class PMA_NavigationTree
         return $retval;
     }
 }
-?>

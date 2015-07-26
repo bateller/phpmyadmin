@@ -195,7 +195,7 @@ function PMA_getHtmlBodyForTableSummary($num_tables, $server_slave_status,
     }
     $cell_text = ($approx_rows)
         ? '<a href="db_structure.php' . PMA_URL_getCommon($row_sum_url)
-        . '" class="ajax row_count_sum">' . '~' . $row_count_sum . '</a>'
+        . '" class="ajax row_count_sum"><bdi>' . '~' . $row_count_sum . '</bdi></a>'
         : $row_count_sum;
     $html_output .= '<th class="value tbl_rows">'
         . $cell_text
@@ -356,9 +356,7 @@ function PMA_getHtmlForCheckAllTables($pmaThemeImage, $text_dir,
         $html_output .= '</optgroup>';
     }
 
-    if (isset($GLOBALS['cfgRelation']['centralcolumnswork'])
-        && $GLOBALS['cfgRelation']['centralcolumnswork']
-    ) {
+    if ($GLOBALS['cfgRelation']['centralcolumnswork']) {
         $html_output .= '<optgroup label="' . __('Central columns') . '">';
         $html_output .= '<option value="sync_unique_columns_central_list" >'
             . __('Add columns to central list') . '</option>' . "\n";
@@ -438,12 +436,10 @@ function PMA_getHtmlForDataDictionaryLink($url_query)
  */
 function PMA_getTimeForCreateUpdateCheck($current_table, $time_label, $time_all)
 {
-    $showtable = PMA_Table::sGetStatusInfo(
+    $showtable = $GLOBALS['dbi']->getTable(
         $GLOBALS['db'],
-        $current_table['TABLE_NAME'],
-        null,
-        true
-    );
+        $current_table['TABLE_NAME']
+    )->sGetStatusInfo(null, true);
     $time = isset($showtable[$time_label])
         ? $showtable[$time_label]
         : false;
@@ -690,7 +686,10 @@ function PMA_getHtmlForNotNullEngineViewTable($table_is_view, $current_table,
             $show_superscript = PMA_Util::showHint(
                 PMA_sanitize(
                     sprintf(
-                        __('This view has at least this number of rows. Please refer to %sdocumentation%s.'),
+                        __(
+                            'This view has at least this number of rows. Please ' .
+                            'refer to %sdocumentation%s.'
+                        ),
                         '[doc@cfg_MaxExactCountViews]',
                         '[/doc]'
                     )
@@ -727,7 +726,7 @@ function PMA_getHtmlForNotNullEngineViewTable($table_is_view, $current_table,
     // If row count is approximate, display it as an anchor to get real count.
     $cell_text = (! empty($row_count_pre))
         ? '<a href="db_structure.php' . PMA_URL_getCommon($real_count_url)
-        . '" class="ajax real_row_count">' . $row_count . '</a>'
+        . '" class="ajax real_row_count"><bdi>' . $row_count . '</bdi></a>'
         : $row_count;
     $html_output .= '<td class="value tbl_rows" data-table="'
         . htmlspecialchars($current_table['TABLE_NAME']) . '">'
@@ -865,7 +864,8 @@ function PMA_tableHeader($db_is_system_schema = false, $replication = false)
             . '        ' . __('Replication') . "\n"
             . '</th>';
     }
-    $html_output .= '<th colspan="' . $action_colspan . '" class="print_ignore">' . "\n"
+    $html_output .= '<th colspan="' . $action_colspan . '" class="print_ignore">'
+        . "\n"
         . '        ' . __('Action') . "\n"
         . '</th>'
         // larger values are more interesting so default sort order is DESC
@@ -1216,10 +1216,9 @@ function PMA_getStuffForEngineTypeTable($current_table, $db_is_system_schema,
         || $current_table['TABLE_TYPE'] == 'SYSTEM VIEW'
     ) {
         // countRecords() takes care of $cfg['MaxExactCountViews']
-        $current_table['TABLE_ROWS'] = PMA_Table::countRecords(
-            $GLOBALS['db'], $current_table['TABLE_NAME'],
-            true, true
-        );
+        $current_table['TABLE_ROWS'] = $GLOBALS['dbi']
+            ->getTable($GLOBALS['db'], $current_table['TABLE_NAME'])
+            ->countRecords(true);
         $table_is_view = true;
     }
 
@@ -1250,9 +1249,9 @@ function PMA_getValuesForAriaTable($db_is_system_schema, $current_table,
     $formatted_overhead, $overhead_unit
 ) {
     if ($db_is_system_schema) {
-        $current_table['Rows'] = PMA_Table::countRecords(
-            $GLOBALS['db'], $current_table['Name']
-        );
+        $current_table['Rows'] = $GLOBALS['dbi']
+            ->getTable($GLOBALS['db'], $current_table['Name'])
+            ->countRecords();
     }
 
     if ($is_show_stats) {
@@ -1297,10 +1296,9 @@ function PMA_getValuesForInnodbTable($current_table, $is_show_stats, $sum_size)
         || !isset($current_table['TABLE_ROWS'])
     ) {
         $current_table['COUNTED'] = true;
-        $current_table['TABLE_ROWS'] = PMA_Table::countRecords(
-            $GLOBALS['db'], $current_table['TABLE_NAME'],
-            true, false
-        );
+        $current_table['TABLE_ROWS'] = $GLOBALS['dbi']
+            ->getTable($GLOBALS['db'], $current_table['TABLE_NAME'])
+            ->countRecords(true);
     } else {
         $current_table['COUNTED'] = false;
     }
@@ -1567,9 +1565,7 @@ function PMA_getHtmlForCheckAllTableColumn($pmaThemeImage, $text_dir,
                 __('Fulltext'), 'b_ftext.png', 'ftext'
             );
         }
-        if (isset($GLOBALS['cfgRelation']['centralcolumnswork'])
-            && $GLOBALS['cfgRelation']['centralcolumnswork']
-        ) {
+        if ($GLOBALS['cfgRelation']['centralcolumnswork']) {
             $html_output .= PMA_Util::getButtonOrImage(
                 'submit_mult', 'mult_submit', 'submit_mult_central_columns_add',
                 __('Add to central columns'), 'centralColumns_add.png',
@@ -2144,7 +2140,8 @@ function PMA_getHtmlForActionsInTableStructure($type, $tbl_storage_engine,
     $primary, $field_name, $url_query, $titles, $row, $rownum,
     $columns_with_unique_index, $isInCentralColumns
 ) {
-    $html_output = '<td class="print_ignore"><ul class="table-structure-actions resizable-menu">';
+    $html_output = '<td class="print_ignore">'
+        . '<ul class="table-structure-actions resizable-menu">';
     $html_output .= PMA_getHtmlForActionRowInStructureTable(
         $type, $tbl_storage_engine,
         'primary nowrap',
@@ -2190,9 +2187,7 @@ function PMA_getHtmlForActionsInTableStructure($type, $tbl_storage_engine,
         );
     }
     $html_output .= PMA_getHtmlForDistinctValueAction($url_query, $row, $titles);
-    if (isset($GLOBALS['cfgRelation']['centralcolumnswork'])
-        && $GLOBALS['cfgRelation']['centralcolumnswork']
-    ) {
+    if ($GLOBALS['cfgRelation']['centralcolumnswork']) {
         $html_output .= '<li class="browse nowrap">';
         if ($isInCentralColumns) {
             $html_output .=
@@ -2325,9 +2320,9 @@ function PMA_getHtmlForDisplayTableStats($showtable, $table_info_num_rows,
 ) {
     $html_output = '<div id="tablestatistics">';
     if (empty($showtable)) {
-        $showtable = PMA_Table::sGetStatusInfo(
-            $GLOBALS['db'], $GLOBALS['table'], null, true
-        );
+        $showtable = $GLOBALS['dbi']->getTable(
+            $GLOBALS['db'], $GLOBALS['table']
+        )->sGetStatusInfo(null, true);
     }
 
     if (empty($showtable['Data_length'])) {
@@ -2341,7 +2336,8 @@ function PMA_getHtmlForDisplayTableStats($showtable, $table_info_num_rows,
 
     // Gets some sizes
 
-    $mergetable = PMA_Table::isMerge($GLOBALS['db'], $GLOBALS['table']);
+    $table = new PMA_Table($GLOBALS['table'], $GLOBALS['db']);
+    $mergetable = $table->isMerge();
 
     // this is to display for example 261.2 MiB instead of 268k KiB
     $max_digits = 3;
@@ -2604,7 +2600,8 @@ function PMA_updateColumns($db, $table)
                 && ! empty($_REQUEST['field_adjust_privileges'][$i])
                 && $_REQUEST['field_orig'][$i] != $_REQUEST['field_name'][$i]
             ) {
-                    $adjust_privileges[$_REQUEST['field_orig'][$i]] = $_REQUEST['field_name'][$i];
+                $adjust_privileges[$_REQUEST['field_orig'][$i]]
+                    = $_REQUEST['field_name'][$i];
             }
         }
     } // end for
@@ -2665,11 +2662,16 @@ function PMA_updateColumns($db, $table)
         $result = $GLOBALS['dbi']->tryQuery($sql_query);
 
         if ($result !== false) {
-            $changed_privileges = PMA_adjustColumnPrivileges($db, $table, $adjust_privileges);
+            $changed_privileges = PMA_adjustColumnPrivileges(
+                $db, $table, $adjust_privileges
+            );
 
             if ($changed_privileges) {
                 $message = PMA_Message::success(
-                    __('Table %1$s has been altered successfully. Privileges have been adjusted.')
+                    __(
+                        'Table %1$s has been altered successfully. Privileges ' .
+                        'have been adjusted.'
+                    )
                 );
             } else {
                 $message = PMA_Message::success(
@@ -3254,7 +3256,8 @@ function PMA_getHtmlShowCreate($db, $db_objects)
     foreach ($db_objects as $object) {
         $tableObj = new PMA_Table($object, $db);
         // Check if current object is a View or Table.
-        $isView = PMA_Table::isView($db, $object);
+        $_table = new PMA_Table($object, $db);
+        $isView = $_table->isView();
         if ($isView) {
             $row_class = ($odd1) ? 'odd' : 'even';
             $views .= '<tr class="' . $row_class . '">'
@@ -3445,4 +3448,3 @@ function PMA_getStructureSubTabs()
 
     return $subtabs;
 }
-?>

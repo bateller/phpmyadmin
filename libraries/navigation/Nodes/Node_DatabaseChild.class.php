@@ -34,7 +34,7 @@ abstract class Node_DatabaseChild extends Node
     {
         $ret = '';
         $cfgRelation = PMA_getRelationsParam();
-        if (isset($cfgRelation['navwork']) && $cfgRelation['navwork']) {
+        if ($cfgRelation['navwork']) {
             $db   = $this->realParent()->real_name;
             $item = $this->real_name;
             $ret  = '<span class="navItemControls">'
@@ -51,4 +51,3 @@ abstract class Node_DatabaseChild extends Node
         return $ret;
     }
 }
-?>

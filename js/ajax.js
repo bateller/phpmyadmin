@@ -411,7 +411,7 @@ var AJAX = {
                         var replacement = $selflink_replace[source];
                         data._selflink = data._selflink.replace(source, replacement);
                     }
-                    $('#selflink > a').attr('href', data._selflink);
+                    $('#selflink').find('> a').attr('href', data._selflink);
                 }
                 if (data._scripts) {
                     AJAX.scriptHandler.load(data._scripts);
@@ -446,10 +446,12 @@ var AJAX = {
                         .insertAfter('#selflink')
                         .append(data._errors);
                     // bind for php error reporting forms (bottom)
-                    $("#pma_ignore_errors_bottom").bind("click", function() {
+                    $("#pma_ignore_errors_bottom").bind("click", function(e) {
+                        e.preventDefault();
                         PMA_ignorePhpErrors();
                     });
-                    $("#pma_ignore_all_errors_bottom").bind("click", function() {
+                    $("#pma_ignore_all_errors_bottom").bind("click", function(e) {
+                        e.preventDefault();
                         PMA_ignorePhpErrors(false);
                     });
                     // In case of 'sendErrorReport'='always'
@@ -650,11 +652,12 @@ AJAX.registerOnload('functions.js', function () {
         }
     });
 
+    var $page_content = $('#page_content');
     /**
      * Workaround for passing submit button name,value on ajax form submit
      * by appending hidden element with submit button name and value.
      */
-    $("#page_content").on('click', 'form input[type=submit]', function() {
+    $page_content.on('click', 'form input[type=submit]', function() {
         var buttonName = $(this).attr('name');
         if (typeof buttonName === 'undefined') {
             return;
@@ -670,7 +673,7 @@ AJAX.registerOnload('functions.js', function () {
      * Attach event listener to events when user modify visible
      * Input,Textarea and select fields to make changes in forms
      */
-    $('#page_content').on(
+    $page_content.on(
         'keyup change',
         'form.lock-page textarea, ' +
         'form.lock-page input[type="text"], ' +
@@ -679,7 +682,7 @@ AJAX.registerOnload('functions.js', function () {
         {value:1},
         AJAX.lockPageHandler
     );
-    $('#page_content').on(
+    $page_content.on(
         'change',
         'form.lock-page input[type="checkbox"], ' +
         'form.lock-page input[type="radio"]',
@@ -707,7 +710,7 @@ $(function () {
     if (history && history.pushState) {
         //set initial state reload
         var initState = ('state' in window.history && window.history.state !== null);
-        var initURL = $('#selflink > a').attr('href') || location.href;
+        var initURL = $('#selflink').find('> a').attr('href') || location.href;
         var state = {
             url : initURL,
             menu : menuContent

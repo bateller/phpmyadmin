@@ -36,7 +36,19 @@ class ExpressionArray extends Component
     {
         $ret = array();
 
-        $expr = null;
+        /**
+         * The state of the parser.
+         *
+         * Below are the states of the parser.
+         *
+         *      0 ----------------------[ array ]---------------------> 1
+         *
+         *      1 ------------------------[ , ]------------------------> 0
+         *      1 -----------------------[ else ]----------------------> -1
+         *
+         * @var int
+         */
+        $state = 0;
 
         for (; $list->idx < $list->count; ++$list->idx) {
             /**
@@ -55,25 +67,35 @@ class ExpressionArray extends Component
                 continue;
             }
 
-            if (($token->type === Token::TYPE_KEYWORD) && ($token->flags & Token::FLAG_KEYWORD_RESERVED)) {
+            if (($token->type === Token::TYPE_KEYWORD)
+                && ($token->flags & Token::FLAG_KEYWORD_RESERVED)
+                && ($token->value !== 'DUAL')
+            ) {
                 // No keyword is expected.
                 break;
             }
 
-            if (($token->type === Token::TYPE_OPERATOR) && ($token->value === ',')) {
-                $ret[] = $expr;
-            } else {
+            if ($state === 0) {
                 $expr = Expression::parse($parser, $list, $options);
                 if ($expr === null) {
                     break;
                 }
+                $ret[] = $expr;
+                $state = 1;
+            } elseif ($state === 1) {
+                if ($token->value === ',') {
+                    $state = 0;
+                } else {
+                    break;
+                }
             }
-
         }
 
-        // Last iteration was not processed.
-        if ($expr !== null) {
-            $ret[] = $expr;
+        if ($state === 0) {
+            $parser->error(
+                __('An expression was expected.'),
+                $list->tokens[$list->idx]
+            );
         }
 
         --$list->idx;

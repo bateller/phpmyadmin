@@ -20,8 +20,6 @@ class Node_Procedure_Container extends Node_DatabaseChild_Container
 {
     /**
      * Initialises the class
-     *
-     * @return Node_Procedure_Container
      */
     public function __construct()
     {
@@ -54,4 +52,3 @@ class Node_Procedure_Container extends Node_DatabaseChild_Container
     }
 }
 
-?>

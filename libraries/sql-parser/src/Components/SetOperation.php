@@ -88,24 +88,22 @@ class SetOperation extends Component
                 break;
             }
 
-            if ($token->type === Token::TYPE_OPERATOR) {
-                if ($token->value === ',') {
+            if ($state === 0) {
+                if ($token->token === '=') {
+                    $state = 1;
+                } else {
+                    $expr->column .= $token->token;
+                }
+            } elseif ($state === 1) {
+                if ($token->token === ',') {
                     $expr->column = trim($expr->column);
                     $expr->value = trim($expr->value);
                     $ret[] = $expr;
                     $expr = new SetOperation();
                     $state = 0;
-                    continue;
-                } elseif ($token->value === '=') {
-                    $state = 1;
-                    continue;
+                } else {
+                    $expr->value .= $token->token;
                 }
-            }
-
-            if ($state === 0) {
-                $expr->column .= $token->token;
-            } else { // } else if ($state === 1) {
-                $expr->value .= $token->token;
             }
         }
 
@@ -118,5 +116,23 @@ class SetOperation extends Component
 
         --$list->idx;
         return $ret;
+    }
+
+    /**
+     * @param SetOperation|SetOperation[] $component The component to be built.
+     *
+     * @return string
+     */
+    public static function build($component)
+    {
+        if (is_array($component)) {
+            $ret = array();
+            foreach ($component as $c) {
+                $ret[] = static::build($c);
+            }
+            return implode(", ", $ret);
+        } else {
+            return $component->column . ' = ' . $component->value;
+        }
     }
 }

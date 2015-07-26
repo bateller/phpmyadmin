@@ -56,17 +56,16 @@ class PMA_MultSubmits_Test extends PHPUnit_Framework_TestCase
 
         //_SESSION
         $_SESSION['relation'][$GLOBALS['server']] = array(
+            'PMA_VERSION' => PMA_VERSION,
             'table_coords' => "table_name",
             'displaywork' => 'displaywork',
             'db' => "information_schema",
             'table_info' => 'table_info',
             'relwork' => 'relwork',
             'commwork' => 'commwork',
-            'displaywork' => 'displaywork',
             'pdfwork' => 'pdfwork',
             'column_info' => 'column_info',
             'relation' => 'relation',
-            'relwork' => 'relwork',
         );
 
         //$_SESSION

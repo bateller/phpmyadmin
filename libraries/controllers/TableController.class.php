@@ -33,7 +33,10 @@ abstract class TableController extends Controller
      */
     protected $table;
 
-    function __construct()
+    /**
+     * Constructor
+     */
+    public function __construct()
     {
         parent::__construct();
         $this->db = $this->container->get('db');

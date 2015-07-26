@@ -16,7 +16,9 @@ require_once 'libraries/Index.class.php';
 
 $container = DI\Container::getDefaultContainer();
 $container->factory('PMA\Controllers\Table\TableIndexesController');
-$container->alias('TableIndexesController', 'PMA\Controllers\Table\TableIndexesController');
+$container->alias(
+    'TableIndexesController', 'PMA\Controllers\Table\TableIndexesController'
+);
 
 /* Define dependencies for the concerned controller */
 $db = $container->get('db');
@@ -24,21 +26,21 @@ $table = $container->get('table');
 $dbi = $container->get('dbi');
 
 if (!isset($_REQUEST['create_edit_table'])) {
-	include_once 'libraries/tbl_common.inc.php';
+    include_once 'libraries/tbl_common.inc.php';
 }
 if (isset($_REQUEST['index'])) {
-	if (is_array($_REQUEST['index'])) {
-		// coming already from form
-		$index = new PMA_Index($_REQUEST['index']);
-	} else {
-		$index = $dbi->getTable($db, $table)->getIndex($_REQUEST['index']);
-	}
+    if (is_array($_REQUEST['index'])) {
+        // coming already from form
+        $index = new PMA_Index($_REQUEST['index']);
+    } else {
+        $index = $dbi->getTable($db, $table)->getIndex($_REQUEST['index']);
+    }
 } else {
-	$index = new PMA_Index;
+    $index = new PMA_Index;
 }
 
 $dependency_definitions = array(
-	"index" => $index
+    "index" => $index
 );
 
 /** @var Controllers\Table\TableIndexesController $controller */

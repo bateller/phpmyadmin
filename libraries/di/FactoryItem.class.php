@@ -10,16 +10,21 @@ namespace PMA\DI;
 
 require_once 'libraries/di/ReflectorItem.class.php';
 
+/**
+ * Factory manager
+ *
+ * @package PMA\DI
+ */
 class FactoryItem extends ReflectorItem
 {
 
     /**
      * Constructor
      *
-     * @param Container $container
-     * @param mixed $definition
+     * @param Container $container  Container
+     * @param mixed     $definition Definition
      */
-    function __construct(Container $container, $definition)
+    public function __construct(Container $container, $definition)
     {
         parent::__construct($container, $definition);
     }
@@ -27,7 +32,8 @@ class FactoryItem extends ReflectorItem
     /**
      * Construct an instance
      *
-     * @param array $params
+     * @param array $params Parameters
+     *
      * @return mixed
      */
     public function get($params = array())

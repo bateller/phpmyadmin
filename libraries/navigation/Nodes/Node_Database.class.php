@@ -30,8 +30,6 @@ class Node_Database extends Node
      * @param int    $type     Type of node, may be one of CONTAINER or OBJECT
      * @param bool   $is_group Whether this object has been created
      *                         while grouping nodes
-     *
-     * @return Node_Database
      */
     public function __construct($name, $type = Node::OBJECT, $is_group = false)
     {
@@ -360,7 +358,7 @@ class Node_Database extends Node
 
         // Remove hidden items so that they are not displayed in navigation tree
         $cfgRelation = PMA_getRelationsParam();
-        if (isset($cfgRelation['navwork']) && $cfgRelation['navwork']) {
+        if ($cfgRelation['navwork']) {
             $hiddenItems = $this->getHiddenItems(substr($type, 0, -1));
             foreach ($retval as $key => $item) {
                 if (in_array($item, $hiddenItems)) {
@@ -648,7 +646,7 @@ class Node_Database extends Node
     {
         $ret = '';
         $cfgRelation = PMA_getRelationsParam();
-        if (isset($cfgRelation['navwork']) && $cfgRelation['navwork']) {
+        if ($cfgRelation['navwork']) {
             if ($this->hiddenCount > 0) {
                 $ret = '<span class="dbItemControls">'
                     . '<a href="navigation.php'
@@ -689,4 +687,3 @@ class Node_Database extends Node
     }
 }
 
-?>

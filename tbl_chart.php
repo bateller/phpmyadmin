@@ -13,13 +13,15 @@ require_once 'libraries/controllers/TableChartController.class.php';
 
 $container = DI\Container::getDefaultContainer();
 $container->factory('PMA\Controllers\Table\TableChartController');
-$container->alias('TableChartController', 'PMA\Controllers\Table\TableChartController');
+$container->alias(
+    'TableChartController', 'PMA\Controllers\Table\TableChartController'
+);
 
 /* Define dependencies for the concerned controller */
 $dependency_definitions = array(
-	"sql_query" => &$GLOBALS['sql_query'],
-	"url_query" => &$GLOBALS['url_query'],
-	"cfg" => &$GLOBALS['cfg']
+    "sql_query" => &$GLOBALS['sql_query'],
+    "url_query" => &$GLOBALS['url_query'],
+    "cfg" => &$GLOBALS['cfg']
 );
 
 /** @var Controllers\Table\TableChartController $controller */

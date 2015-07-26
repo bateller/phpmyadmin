@@ -625,7 +625,7 @@ class PMA_DisplayResults
             || ($displayParts['sort_lnk'] == '1'))
             && (/*overload*/mb_strlen($db) && !empty($table))
         ) {
-            $the_total   = PMA_Table::countRecords($db, $table);
+            $the_total = $GLOBALS['dbi']->getTable($db, $table)->countRecords();
         }
 
         // if for COUNT query, number of rows returned more than 1
@@ -643,9 +643,10 @@ class PMA_DisplayResults
             // - For a VIEW we (probably) did not count the number of rows
             //   so don't test this number here, it would remove the possibility
             //   of sorting VIEW results.
+            $_table = new PMA_Table($table, $db);
             if (isset($unlim_num_rows)
                 && ($unlim_num_rows < 2)
-                && ! PMA_Table::isView($db, $table)
+                && ! $_table->isView()
             ) {
                 $displayParts['sort_lnk'] = (string) '0';
             }
@@ -1537,11 +1538,6 @@ class PMA_DisplayResults
                 = (($displayParts['edit_lnk'] != self::NO_EDIT_OR_DELETE)
                 && ($displayParts['del_lnk'] != self::NO_EDIT_OR_DELETE)) ? 4 : 0;
 
-            $button_html .= '<th class="print_ignore" colspan="' . $this->__get('fields_cnt') . '">'
-                . '</th>'
-                . '</tr>'
-                . '<tr>';
-
         } elseif ((($GLOBALS['cfg']['RowActionLinks'] == self::POSITION_LEFT)
             || ($GLOBALS['cfg']['RowActionLinks'] == self::POSITION_BOTH))
             && ($displayParts['text_btn'] == '1')
@@ -1676,11 +1672,13 @@ class PMA_DisplayResults
         }
 
         // generate table create time
-        if (! PMA_Table::isView($this->__get('db'), $this->__get('table'))) {
+        $table = new PMA_Table($this->__get('table'), $this->__get('db'));
+        if (! $table->isView()) {
             $data_html .= '<input class="table_create_time" type="hidden" value="'
-                . PMA_Table::sGetStatusInfo(
-                    $this->__get('db'), $this->__get('table'), 'Create_time'
-                ) . '" />';
+                . $GLOBALS['dbi']->getTable(
+                    $this->__get('db'), $this->__get('table')
+                )->sGetStatusInfo('Create_time')
+                . '" />';
         }
 
         return $data_html;
@@ -4654,7 +4652,8 @@ class PMA_DisplayResults
 
         }
 
-        if (PMA_Table::isView($this->__get('db'), $this->__get('table'))
+        $table = new PMA_Table($this->__get('table'), $this->__get('db'));
+        if ($table->isView()
             && ($total == $GLOBALS['cfg']['MaxExactCountViews'])
         ) {
 
@@ -5034,7 +5033,7 @@ class PMA_DisplayResults
         }
         // if empty result set was produced we need to
         // show only view and not other options
-        if ($only_view == true) {
+        if ($only_view) {
             $results_operations_html .= $this->_getLinkForCreateView(
                 $analyzed_sql_results, $url_query
             );
@@ -5767,4 +5766,3 @@ class PMA_DisplayResults
     }
 }
 
-?>

@@ -78,14 +78,25 @@ phpMyAdmin - ChangeLog
 + rfe #1680 Human readable/writable URLs (html5 api)
 + rfe       Support virtual columns in MySQL 5.7.5+
 + rfe #1517 Support for virtual/persistent columns in MariaDB
+- bug #4984 Undefined <feature>work upon upgrade to new version
+- issue #1817 Creating configuration storage tables fail in MySQL 5.7
+- issue #6118 Parser does not handle nested selects
+- issue #5437 Support SELECT ... FROM DUAL
+- issue #4962 Support UNION
 
-4.4.12.0 (not yet released)
+4.4.13.0 (not yet released)
+- issue #1808 "Improve table structure" generates invalid SQL
+- bug         Once checked "Show only active" checkbox is always checked
+- issue #1813 Delete rows using "Check All" is broken
+
+4.4.12.0 (2015-07-20)
 - bug       Saved chart image does not have a proper name or an extension
 - bug #4976 Timepicker CSS issues in Original theme
 - bug #4975 Move/Copy/Rename operations on Table/Db fail on Drizzle server
 - bug #4826 Two inline edit windows
 - bug #4979 Problem when import *.ods file
 - bug       Add missing head tag
+- bug #4985 Column headers move when scrolling
 
 4.4.11.0 (2015-07-06)
 - bug       Missing selected/entered values when editing active options in visual query builder

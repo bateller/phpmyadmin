@@ -35,7 +35,7 @@ class TableChartController extends TableController
     protected $sql_query;
 
     /**
-     * @var $url_query
+     * @var string $url_query
      */
     protected $url_query;
 
@@ -44,7 +44,14 @@ class TableChartController extends TableController
      */
     protected $cfg;
 
-    function __construct($sql_query, $url_query, $cfg)
+    /**
+     * Constructor
+     *
+     * @param string $sql_query Query
+     * @param string $url_query Query URL
+     * @param array  $cfg       Configuration
+     */
+    public function __construct($sql_query, $url_query, $cfg)
     {
         parent::__construct();
 
@@ -53,8 +60,10 @@ class TableChartController extends TableController
         $this->cfg = $cfg;
     }
 
-    /*
+    /**
      * Execute the query and return the result
+     *
+     * @return void
      */
     public function indexAction()
     {
@@ -75,19 +84,21 @@ class TableChartController extends TableController
             return;
         }
 
-        $this->response->getHeader()->getScripts()->addFiles(array(
-            'chart.js',
-            'tbl_chart.js',
-            'jqplot/jquery.jqplot.js',
-            'jqplot/plugins/jqplot.barRenderer.js',
-            'jqplot/plugins/jqplot.canvasAxisLabelRenderer.js',
-            'jqplot/plugins/jqplot.canvasTextRenderer.js',
-            'jqplot/plugins/jqplot.categoryAxisRenderer.js',
-            'jqplot/plugins/jqplot.dateAxisRenderer.js',
-            'jqplot/plugins/jqplot.pointLabels.js',
-            'jqplot/plugins/jqplot.pieRenderer.js',
-            'jqplot/plugins/jqplot.highlighter.js'
-        ));
+        $this->response->getHeader()->getScripts()->addFiles(
+            array(
+                'chart.js',
+                'tbl_chart.js',
+                'jqplot/jquery.jqplot.js',
+                'jqplot/plugins/jqplot.barRenderer.js',
+                'jqplot/plugins/jqplot.canvasAxisLabelRenderer.js',
+                'jqplot/plugins/jqplot.canvasTextRenderer.js',
+                'jqplot/plugins/jqplot.categoryAxisRenderer.js',
+                'jqplot/plugins/jqplot.dateAxisRenderer.js',
+                'jqplot/plugins/jqplot.pointLabels.js',
+                'jqplot/plugins/jqplot.pieRenderer.js',
+                'jqplot/plugins/jqplot.highlighter.js'
+            )
+        );
 
         /**
          * Extract values for common work
@@ -99,18 +110,14 @@ class TableChartController extends TableController
         /**
          * Runs common work
          */
-        if (/*overload*/
-        mb_strlen($this->table)
-        ) {
+        if (/*overload*/ mb_strlen($this->table)) {
             $url_params['goto'] = PMA_Util::getScriptNameForOption(
                 $this->cfg['DefaultTabTable'], 'table'
             );
             $url_params['back'] = 'tbl_sql.php';
             include 'libraries/tbl_common.inc.php';
             include 'libraries/tbl_info.inc.php';
-        } elseif (/*overload*/
-        mb_strlen($this->db)
-        ) {
+        } elseif (/*overload*/ mb_strlen($this->db)) {
             $url_params['goto'] = PMA_Util::getScriptNameForOption(
                 $this->cfg['DefaultTabDatabase'], 'database'
             );
@@ -158,20 +165,25 @@ class TableChartController extends TableController
         /**
          * Displays the page
          */
-        $this->response->addHTML(Template::get('tbl_chart')
-            ->render(array(
-                'url_query' => $this->url_query,
-                'url_params' => $url_params,
-                'keys' => $keys,
-                'fields_meta' => $fields_meta,
-                'numeric_types' => $numeric_types,
-                'numeric_column_count' => $numeric_column_count,
-                'sql_query' => $this->sql_query
-            )));
+        $this->response->addHTML(
+            Template::get('tbl_chart')->render(
+                array(
+                    'url_query' => $this->url_query,
+                    'url_params' => $url_params,
+                    'keys' => $keys,
+                    'fields_meta' => $fields_meta,
+                    'numeric_types' => $numeric_types,
+                    'numeric_column_count' => $numeric_column_count,
+                    'sql_query' => $this->sql_query
+                )
+            )
+        );
     }
 
     /**
      * Handle ajax request
+     *
+     * @return void
      */
     public function ajaxAction()
     {
@@ -212,7 +224,9 @@ class TableChartController extends TableController
         foreach ($data as $data_row_number => $data_row) {
             $tmp_row = array();
             foreach ($data_row as $data_column => $data_value) {
-                $tmp_row[htmlspecialchars($data_column)] = htmlspecialchars($data_value);
+                $tmp_row[htmlspecialchars($data_column)] = htmlspecialchars(
+                    $data_value
+                );
             }
             $sanitized_data[] = $tmp_row;
         }
